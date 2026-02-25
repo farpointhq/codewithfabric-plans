@@ -61,4 +61,5 @@ markdown_extensions:
     permalink: true
 nav:
 - Home: index.md
-- Plans: []
+- Plans:
+  - "Issue #64 \u2013 Team Management Schema & Auth": plans/issue-64-plan.md

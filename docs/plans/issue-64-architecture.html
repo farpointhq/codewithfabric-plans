@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="../stylesheets/extra.css">
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #e5e5e5; padding: 32px; margin: 0; }
+.diagram { margin-bottom: 32px; }
+.diagram-title { font-size: 16px; font-weight: 600; color: #a5b4fc; margin-bottom: 16px; letter-spacing: 0.5px; }
+.diagram-row { display: flex; gap: 16px; align-items: stretch; }
+.diagram-box { border-radius: 8px; padding: 20px; flex: 1; }
+.diagram-box.main { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); border: 1px solid #4338ca; }
+.diagram-box.renderer { background: linear-gradient(135deg, #14532d 0%, #166534 100%); border: 1px solid #16a34a; }
+.diagram-box.warning { background: linear-gradient(135deg, #78350f 0%, #92400e 100%); border: 1px solid #f59e0b; }
+.diagram-box-title { font-size: 11px; font-weight: 600; letter-spacing: 1px; margin-bottom: 16px; }
+.diagram-box.main .diagram-box-title { color: #a5b4fc; }
+.diagram-box.renderer .diagram-box-title { color: #86efac; }
+.diagram-box.warning .diagram-box-title { color: #fcd34d; }
+.diagram-steps { display: flex; flex-direction: column; gap: 8px; }
+.diagram-step { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.diagram-step-text { color: #e0e7ff; }
+.diagram-box.renderer .diagram-step-text { color: #dcfce7; }
+.diagram-box.warning .diagram-step-text { color: #fef3c7; }
+.diagram-step-code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: monospace; color: #c4b5fd; }
+.diagram-connector { margin-left: 11px; border-left: 2px solid #4338ca; height: 8px; }
+.section-title { font-size: 14px; font-weight: 600; color: #9ca3af; margin: 32px 0 16px; text-transform: uppercase; letter-spacing: 1px; }
+
+/* Permission matrix */
+.perm-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+.perm-table th { text-align: left; padding: 8px 12px; color: #9ca3af; font-size: 11px; font-weight: 600; letter-spacing: 1px; border-bottom: 1px solid #374151; }
+.perm-table td { padding: 8px 12px; font-size: 13px; color: #e5e5e5; border-bottom: 1px solid #1f2937; }
+.perm-yes { color: #4ade80; font-weight: 600; }
+.perm-no { color: #f87171; font-weight: 600; }
+.perm-partial { color: #fbbf24; font-weight: 600; }
+
+/* Hierarchy */
+.hierarchy { padding: 20px; }
+.hierarchy-node { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.hierarchy-indent { display: inline-block; }
+.hierarchy-box { background: #1e1b4b; border: 1px solid #4338ca; border-radius: 6px; padding: 6px 14px; font-size: 13px; color: #c4b5fd; }
+.hierarchy-line { color: #4338ca; font-family: monospace; font-size: 14px; }
+.hierarchy-label { color: #6b7280; font-size: 11px; font-style: italic; margin-left: 8px; }
+</style>
+</head>
+<body>
+
+<div class="diagram">
+  <div class="diagram-title">Authorization Architecture: getTeamContext() Flow</div>
+  <div class="diagram-box main">
+    <div class="diagram-box-title">GET TEAM CONTEXT</div>
+    <div class="diagram-steps">
+      <div class="diagram-step">
+        <span class="diagram-step-text">1. Receive <code class="diagram-step-code">userId</code> + <code class="diagram-step-code">teamId</code></span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-text">2. Fetch Team with owner + members</span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-text">3. Check <code class="diagram-step-code">team.ownerId === userId</code> → role = OWNER</span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-text">4. Else find <code class="diagram-step-code">TeamMember</code> → role = member.role</span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-text">5. Return <code class="diagram-step-code">TeamContext { user, team, role, membership }</code></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-title">Permission Matrix</div>
+<table class="perm-table">
+  <thead>
+    <tr>
+      <th>ACTION</th>
+      <th>OWNER</th>
+      <th>ADMIN</th>
+      <th>MEMBER</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>View team</td>
+      <td class="perm-yes">Yes</td>
+      <td class="perm-yes">Yes</td>
+      <td class="perm-yes">Yes</td>
+    </tr>
+    <tr>
+      <td>Invite member</td>
+      <td class="perm-yes">Yes</td>
+      <td class="perm-yes">Yes</td>
+      <td class="perm-no">No</td>
+    </tr>
+    <tr>
+      <td>Remove member</td>
+      <td class="perm-yes">Yes</td>
+      <td class="perm-partial">Members only</td>
+      <td class="perm-no">No</td>
+    </tr>
+    <tr>
+      <td>Change role</td>
+      <td class="perm-yes">Yes</td>
+      <td class="perm-no">No</td>
+      <td class="perm-no">No</td>
+    </tr>
+    <tr>
+      <td>Set rate/monthly limit</td>
+      <td class="perm-yes">Yes</td>
+      <td class="perm-no">No</td>
+      <td class="perm-no">No</td>
+    </tr>
+    <tr>
+      <td>Buy plan for member</td>
+      <td class="perm-yes">Yes</td>
+      <td class="perm-no">No</td>
+      <td class="perm-no">No</td>
+    </tr>
+    <tr>
+      <td>Update team settings</td>
+      <td class="perm-yes">Yes</td>
+      <td class="perm-no">No</td>
+      <td class="perm-no">No</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="section-title">Team Hierarchy</div>
+<div class="diagram">
+  <div class="diagram-box main" style="max-width: 500px;">
+    <div class="diagram-box-title">SELF-REFERENTIAL HIERARCHY</div>
+    <div class="hierarchy">
+      <div class="hierarchy-node">
+        <span class="hierarchy-box">Acme Corp</span>
+        <span class="hierarchy-label">parentTeamId: null (root)</span>
+      </div>
+      <div class="hierarchy-node">
+        <span class="hierarchy-indent" style="width: 24px;"></span>
+        <span class="hierarchy-line">├──</span>
+        <span class="hierarchy-box">Engineering</span>
+        <span class="hierarchy-label">parentTeamId: acme-id</span>
+      </div>
+      <div class="hierarchy-node">
+        <span class="hierarchy-indent" style="width: 48px;"></span>
+        <span class="hierarchy-line">├──</span>
+        <span class="hierarchy-box">Frontend</span>
+        <span class="hierarchy-label">parentTeamId: eng-id</span>
+      </div>
+      <div class="hierarchy-node">
+        <span class="hierarchy-indent" style="width: 48px;"></span>
+        <span class="hierarchy-line">└──</span>
+        <span class="hierarchy-box">Backend</span>
+        <span class="hierarchy-label">parentTeamId: eng-id</span>
+      </div>
+      <div class="hierarchy-node">
+        <span class="hierarchy-indent" style="width: 24px;"></span>
+        <span class="hierarchy-line">└──</span>
+        <span class="hierarchy-box">Marketing</span>
+        <span class="hierarchy-label">parentTeamId: acme-id</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-title">Schema Changes Summary</div>
+<div class="diagram-row">
+  <div class="diagram-box renderer">
+    <div class="diagram-box-title">TEAM MEMBER (NEW FIELDS)</div>
+    <div class="diagram-steps">
+      <div class="diagram-step"><span class="diagram-step-text"><code class="diagram-step-code">isUnlimited</code> Boolean = false</span></div>
+      <div class="diagram-step"><span class="diagram-step-text"><code class="diagram-step-code">unlimitedCurrentPeriodEnd</code> DateTime?</span></div>
+      <div class="diagram-step"><span class="diagram-step-text"><code class="diagram-step-code">stripeSubscriptionId</code> String? @unique</span></div>
+      <div class="diagram-step"><span class="diagram-step-text"><code class="diagram-step-code">monthlyLimitCents</code> Int?</span></div>
+      <div class="diagram-step"><span class="diagram-step-text"><code class="diagram-step-code">currentMonthSpendCents</code> Int = 0</span></div>
+      <div class="diagram-step"><span class="diagram-step-text"><code class="diagram-step-code">budgetResetAt</code> DateTime?</span></div>
+      <div class="diagram-step"><span class="diagram-step-text"><code class="diagram-step-code">billingProvider</code> BillingProvider = TEAM_OWNER</span></div>
+    </div>
+  </div>
+  <div class="diagram-box warning">
+    <div class="diagram-box-title">TEAM (NEW FIELDS)</div>
+    <div class="diagram-steps">
+      <div class="diagram-step"><span class="diagram-step-text"><code class="diagram-step-code">parentTeamId</code> String?</span></div>
+      <div class="diagram-step"><span class="diagram-step-text"><code class="diagram-step-code">parentTeam</code> Team? relation</span></div>
+      <div class="diagram-step"><span class="diagram-step-text"><code class="diagram-step-code">childTeams</code> Team[] relation</span></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

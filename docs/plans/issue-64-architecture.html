@@ -89,6 +89,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <td class="perm-yes">Yes</td>
     </tr>
     <tr>
+      <td>View downline members</td>
+      <td class="perm-yes">Yes</td>
+      <td class="perm-yes">Yes</td>
+      <td class="perm-no">No</td>
+    </tr>
+    <tr>
       <td>Invite member</td>
       <td class="perm-yes">Yes</td>
       <td class="perm-yes">Yes</td>
@@ -109,13 +115,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <tr>
       <td>Set rate/monthly limit</td>
       <td class="perm-yes">Yes</td>
-      <td class="perm-no">No</td>
+      <td class="perm-yes">Yes</td>
       <td class="perm-no">No</td>
     </tr>
     <tr>
       <td>Buy plan for member</td>
       <td class="perm-yes">Yes</td>
+      <td class="perm-yes">Yes</td>
       <td class="perm-no">No</td>
+    </tr>
+    <tr>
+      <td>Change downline billing</td>
+      <td class="perm-yes">Yes</td>
+      <td class="perm-yes">Yes</td>
       <td class="perm-no">No</td>
     </tr>
     <tr>
@@ -159,6 +171,34 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <span class="hierarchy-line">└──</span>
         <span class="hierarchy-box">Marketing</span>
         <span class="hierarchy-label">parentTeamId: acme-id</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-title">Downline Visibility</div>
+<div class="diagram">
+  <div class="diagram-box renderer" style="max-width: 600px;">
+    <div class="diagram-box-title">TEAM_LEAD DOWNLINE ACCESS</div>
+    <div class="diagram-steps">
+      <div class="diagram-step">
+        <span class="diagram-step-text">Alice is <code class="diagram-step-code">TEAM_LEAD</code> of <strong>Engineering</strong></span>
+      </div>
+      <div class="diagram-connector" style="border-color: #16a34a;"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-text">She can see &amp; manage billing for all <strong>Engineering</strong> members</span>
+      </div>
+      <div class="diagram-connector" style="border-color: #16a34a;"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-text">She can also see &amp; manage billing for <strong>Frontend</strong> members (child team)</span>
+      </div>
+      <div class="diagram-connector" style="border-color: #16a34a;"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-text">And <strong>Backend</strong> members (child team)</span>
+      </div>
+      <div class="diagram-connector" style="border-color: #16a34a;"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-text">But NOT <strong>Marketing</strong> members (sibling team, not in her downline)</span>
       </div>
     </div>
   </div>

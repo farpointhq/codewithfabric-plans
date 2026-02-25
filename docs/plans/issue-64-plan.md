@@ -71,27 +71,32 @@ interface TeamContext {
 }
 ```
 
-Note: `OWNER` is derived from `Team.ownerId === user.id`, not from `TeamRole` enum (which stays as ADMIN | MEMBER).
+Note: `OWNER` is derived from `Team.ownerId === user.id`, not from `TeamRole` enum (which stays as TEAM_LEAD | MEMBER).
 
 #### Permission Matrix
 
 | Action | OWNER | TEAM_LEAD | MEMBER |
 |--------|-------|-----------|--------|
 | View team | Yes | Yes | Yes |
+| View downline members | Yes | Yes | No |
 | Invite member | Yes | Yes | No |
 | Remove member | Yes | Yes* | No |
 | Change role | Yes | No | No |
-| Set rate/monthly limit | Yes | No | No |
-| Buy plan for member | Yes | No | No |
+| Set rate/monthly limit | Yes | Yes | No |
+| Buy plan for member | Yes | Yes | No |
+| Change downline billing | Yes | Yes | No |
 | Update team settings | Yes | No | No |
 
 *TEAM_LEAD can only remove MEMBER-level users
 
+**Downline access:** A TEAM_LEAD can see and manage billing for all members in their team AND all descendant teams in the hierarchy. For example, a TEAM_LEAD of "Engineering" can view and change billing for members in "Frontend" and "Backend" (child teams), recursively.
+
 #### Hierarchy Helpers
 
 - `getAncestorTeams(teamId)` — walk up `parentTeamId` chain
+- `getDescendantTeams(teamId)` — walk down to get all child teams recursively
+- `getDownlineMembers(teamId)` — get all members across a team and its descendants
 - `isAncestorOf(teamA, teamB)` — check if A is above B in hierarchy
-- Foundational only — full property inheritance comes in a later issue
 
 ## Files to Modify
 
@@ -121,12 +126,17 @@ Following existing test patterns (mock Prisma, test functions in isolation):
    - User not found returns null/throws
 
 2. **Permission matrix** tests:
-   - Each action × each role (7 actions × 3 roles = 21 test cases)
+   - Each action × each role (9 actions × 3 roles = 27 test cases)
    - TEAM_LEAD removing TEAM_LEAD (should fail)
    - TEAM_LEAD removing MEMBER (should succeed)
+   - TEAM_LEAD managing billing for direct member (should succeed)
+   - TEAM_LEAD managing billing for downline member (should succeed)
+   - TEAM_LEAD managing billing for member in unrelated team (should fail)
 
 3. **Hierarchy helpers** tests:
    - `getAncestorTeams`: single parent, multi-level chain, root team (no parent)
+   - `getDescendantTeams`: single child, multi-level descendants, leaf team (no children)
+   - `getDownlineMembers`: members across multiple levels, empty child teams
    - `isAncestorOf`: direct parent, grandparent, unrelated teams, same team
    - Circular reference protection (max depth guard)
 
@@ -144,7 +154,7 @@ Following existing test patterns (mock Prisma, test functions in isolation):
 
 ### Open/Closed
 - Permission checks use a permission matrix pattern, extensible by adding new actions without modifying existing checks
-- `TeamRole` type union (`'OWNER' | 'ADMIN' | 'MEMBER'`) is extensible
+- `TeamRole` type union (`'OWNER' | 'TEAM_LEAD' | 'MEMBER'`) is extensible
 
 ### Interface Segregation
 - `TeamContext` is minimal — only what callers need

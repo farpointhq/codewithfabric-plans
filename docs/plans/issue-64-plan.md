@@ -61,7 +61,7 @@ New self-referential FK on `Team`:
 #### TeamContext
 
 ```typescript
-type TeamRole = 'OWNER' | 'ADMIN' | 'MEMBER';
+type TeamRole = 'OWNER' | 'TEAM_LEAD' | 'MEMBER';
 
 interface TeamContext {
   user: { id: string; email: string };
@@ -75,8 +75,8 @@ Note: `OWNER` is derived from `Team.ownerId === user.id`, not from `TeamRole` en
 
 #### Permission Matrix
 
-| Action | OWNER | ADMIN | MEMBER |
-|--------|-------|-------|--------|
+| Action | OWNER | TEAM_LEAD | MEMBER |
+|--------|-------|-----------|--------|
 | View team | Yes | Yes | Yes |
 | Invite member | Yes | Yes | No |
 | Remove member | Yes | Yes* | No |
@@ -85,7 +85,7 @@ Note: `OWNER` is derived from `Team.ownerId === user.id`, not from `TeamRole` en
 | Buy plan for member | Yes | No | No |
 | Update team settings | Yes | No | No |
 
-*ADMIN can only remove MEMBER-level users
+*TEAM_LEAD can only remove MEMBER-level users
 
 #### Hierarchy Helpers
 
@@ -115,15 +115,15 @@ Following existing test patterns (mock Prisma, test functions in isolation):
 
 1. **getTeamContext()** tests:
    - Owner identified correctly (via `Team.ownerId`)
-   - Admin identified correctly (via `TeamMember.role`)
+   - Team lead identified correctly (via `TeamMember.role`)
    - Member identified correctly
    - Non-member returns null/throws
    - User not found returns null/throws
 
 2. **Permission matrix** tests:
    - Each action × each role (7 actions × 3 roles = 21 test cases)
-   - ADMIN removing ADMIN (should fail)
-   - ADMIN removing MEMBER (should succeed)
+   - TEAM_LEAD removing TEAM_LEAD (should fail)
+   - TEAM_LEAD removing MEMBER (should succeed)
 
 3. **Hierarchy helpers** tests:
    - `getAncestorTeams`: single parent, multi-level chain, root team (no parent)

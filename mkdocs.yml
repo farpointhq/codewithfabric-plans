@@ -63,3 +63,4 @@ nav:
 - Home: index.md
 - Plans:
   - "Issue #64 \u2013 Team Management Schema & Auth": plans/issue-64-plan.md
+  - "Issue #65 \u2013 Team Invite Flow & Migration": plans/issue-65-plan.md

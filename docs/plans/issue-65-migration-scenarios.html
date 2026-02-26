@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../stylesheets/extra.css">
+<style>
+body { margin: 0; padding: 24px; background: #0f0f0f; }
+.diagram-title { font-size: 18px; font-weight: 700; color: #e5e5e5; margin-bottom: 20px; text-align: center; }
+
+/* Scenario cards */
+.scenario { background: #1a1a2e; border: 1px solid #333; border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+.scenario-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.scenario-num { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: white; flex-shrink: 0; }
+.scenario-num.s1 { background: #2563eb; }
+.scenario-num.s2 { background: #7c3aed; }
+.scenario-num.s3 { background: #059669; }
+.scenario-num.s4 { background: #d97706; }
+.scenario-num.s5 { background: #dc2626; }
+.scenario-title { font-size: 14px; font-weight: 600; color: #e5e5e5; }
+.scenario-state { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+
+/* Before/After */
+.scenario-flow { display: flex; align-items: center; gap: 12px; margin-left: 40px; }
+.scenario-before, .scenario-after { flex: 1; border-radius: 6px; padding: 10px; font-size: 12px; }
+.scenario-before { background: #1c1917; border: 1px solid #57534e; color: #d6d3d1; }
+.scenario-after { background: #052e16; border: 1px solid #16a34a; color: #bbf7d0; }
+.scenario-arrow { color: #4ade80; font-size: 20px; flex-shrink: 0; }
+.scenario-label { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 4px; }
+.scenario-label.before { color: #a8a29e; }
+.scenario-label.after { color: #4ade80; }
+
+/* Ops list */
+.ops { margin-top: 8px; margin-left: 40px; }
+.ops-title { font-size: 10px; font-weight: 600; color: #6366f1; letter-spacing: 0.5px; margin-bottom: 4px; }
+.ops-item { font-size: 11px; color: #a5b4fc; font-family: monospace; padding: 2px 0; }
+
+/* Anti-hijack warning */
+.anti-hijack { background: #451a03; border: 1px solid #ea580c; border-radius: 10px; padding: 14px; margin-top: 16px; }
+.anti-hijack-title { font-size: 12px; font-weight: 700; color: #fb923c; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.anti-hijack-text { font-size: 12px; color: #fed7aa; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="diagram" style="max-width: 700px;">
+  <div class="diagram-title">Accept Invite — 5 Migration Scenarios</div>
+
+  <!-- Scenario 1 -->
+  <div class="scenario">
+    <div class="scenario-header">
+      <div class="scenario-num s1">1</div>
+      <div>
+        <div class="scenario-title">No Team</div>
+        <div class="scenario-state">Invitee has no team at all</div>
+      </div>
+    </div>
+    <div class="scenario-flow">
+      <div class="scenario-before">
+        <div class="scenario-label before">BEFORE</div>
+        User exists, no TeamMember records, no owned teams
+      </div>
+      <div class="scenario-arrow">→</div>
+      <div class="scenario-after">
+        <div class="scenario-label after">AFTER</div>
+        New TeamMember created with invited role
+      </div>
+    </div>
+    <div class="ops">
+      <div class="ops-title">PRISMA OPS</div>
+      <div class="ops-item">teamMember.create({ userId, teamId, role })</div>
+    </div>
+  </div>
+
+  <!-- Scenario 2 -->
+  <div class="scenario">
+    <div class="scenario-header">
+      <div class="scenario-num s2">2</div>
+      <div>
+        <div class="scenario-title">Empty Team, No Sub</div>
+        <div class="scenario-state">Owns a team with 0 members and no active subscription</div>
+      </div>
+    </div>
+    <div class="scenario-flow">
+      <div class="scenario-before">
+        <div class="scenario-label before">BEFORE</div>
+        Owns team (0 members), subscriptionStatus = INACTIVE
+      </div>
+      <div class="scenario-arrow">→</div>
+      <div class="scenario-after">
+        <div class="scenario-label after">AFTER</div>
+        Old team dissolved, joined new team as member
+      </div>
+    </div>
+    <div class="ops">
+      <div class="ops-title">PRISMA OPS</div>
+      <div class="ops-item">team.delete({ id: oldTeamId })</div>
+      <div class="ops-item">teamMember.create({ userId, teamId, role })</div>
+    </div>
+  </div>
+
+  <!-- Scenario 3 -->
+  <div class="scenario">
+    <div class="scenario-header">
+      <div class="scenario-num s3">3</div>
+      <div>
+        <div class="scenario-title">Empty Team, Active Sub</div>
+        <div class="scenario-state">Owns a team with 0 members but has active subscription</div>
+      </div>
+    </div>
+    <div class="scenario-flow">
+      <div class="scenario-before">
+        <div class="scenario-label before">BEFORE</div>
+        Owns team, subscriptionStatus = ACTIVE, no members
+      </div>
+      <div class="scenario-arrow">→</div>
+      <div class="scenario-after">
+        <div class="scenario-label after">AFTER</div>
+        Joined new team with billingProvider = SELF
+      </div>
+    </div>
+    <div class="ops">
+      <div class="ops-title">PRISMA OPS</div>
+      <div class="ops-item">teamMember.create({ userId, teamId, role, billingProvider: 'SELF' })</div>
+    </div>
+  </div>
+
+  <!-- Scenario 4 -->
+  <div class="scenario">
+    <div class="scenario-header">
+      <div class="scenario-num s4">4</div>
+      <div>
+        <div class="scenario-title">Team with Members</div>
+        <div class="scenario-state">Owns a team that has other members</div>
+      </div>
+    </div>
+    <div class="scenario-flow">
+      <div class="scenario-before">
+        <div class="scenario-label before">BEFORE</div>
+        Owns team with N members, independent hierarchy
+      </div>
+      <div class="scenario-arrow">→</div>
+      <div class="scenario-after">
+        <div class="scenario-label after">AFTER</div>
+        Old team becomes sub-team (parentTeamId set)
+      </div>
+    </div>
+    <div class="ops">
+      <div class="ops-title">PRISMA OPS</div>
+      <div class="ops-item">team.update({ id: oldTeamId, parentTeamId: newTeamId })</div>
+      <div class="ops-item">teamMember.create({ userId, teamId: newTeamId, role })</div>
+    </div>
+  </div>
+
+  <!-- Scenario 5 -->
+  <div class="scenario">
+    <div class="scenario-header">
+      <div class="scenario-num s5">5</div>
+      <div>
+        <div class="scenario-title">Member of Another Team</div>
+        <div class="scenario-state">Currently a member (not owner) of a different team</div>
+      </div>
+    </div>
+    <div class="scenario-flow">
+      <div class="scenario-before">
+        <div class="scenario-label before">BEFORE</div>
+        TeamMember record in team X with role MEMBER or ADMIN
+      </div>
+      <div class="scenario-arrow">→</div>
+      <div class="scenario-after">
+        <div class="scenario-label after">AFTER</div>
+        Left old team, joined new team
+      </div>
+    </div>
+    <div class="ops">
+      <div class="ops-title">PRISMA OPS</div>
+      <div class="ops-item">teamMember.delete({ id: oldMembershipId })</div>
+      <div class="ops-item">teamMember.create({ userId, teamId, role })</div>
+    </div>
+  </div>
+
+  <!-- Anti-hijacking -->
+  <div class="anti-hijack">
+    <div class="anti-hijack-title">ANTI-HIJACKING RULE</div>
+    <div class="anti-hijack-text">
+      Cannot invite someone who is in an <strong>ancestor team</strong> of yours. This prevents a child team from absorbing its parent or grandparent.<br><br>
+      <strong>Check:</strong> Walk invitee's team hierarchy upward. If the inviting team appears as a descendant, reject with 409 error:<br>
+      <em>"This person is a member of a team that is a superset of your team"</em>
+    </div>
+  </div>
+</div>
+</body>
+</html>

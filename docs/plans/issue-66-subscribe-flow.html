@@ -1,0 +1,51 @@
+<link rel="stylesheet" href="../stylesheets/extra.css">
+<div class="diagram" style="max-width:700px">
+  <div class="diagram-box main">
+    <div class="diagram-box-title">POST /api/team/members/[memberId]/subscribe</div>
+    <div class="diagram-steps">
+      <div class="diagram-step">
+        <span class="diagram-step-num">1</span>
+        <span class="diagram-step-text">Authenticate caller via <code class="diagram-step-code">getTeamContext()</code></span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-num">2</span>
+        <span class="diagram-step-text">Check <code class="diagram-step-code">BUY_PLAN</code> permission (OWNER or ADMIN)</span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-num">3</span>
+        <span class="diagram-step-text">Verify member exists and is not already unlimited</span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-num">4</span>
+        <span class="diagram-step-text">Look up purchaser's <code class="diagram-step-code">stripeCustomerId</code> + default payment method</span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-branch">
+        <div class="diagram-branch-box yes">
+          <div class="diagram-branch-title">HAS PAYMENT METHOD</div>
+          <div class="diagram-branch-text" style="font-size:12px">
+            <div style="margin-bottom:6px"><strong>5a.</strong> <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px;font-size:11px">stripe.subscriptions.create()</code></div>
+            <div style="margin-bottom:6px">• customer: purchaser's stripeCustomerId</div>
+            <div style="margin-bottom:6px">• metadata: { forMemberId, teamId }</div>
+            <div style="margin-bottom:6px"><strong>6a.</strong> Update TeamMember:</div>
+            <div>• isUnlimited: true</div>
+            <div>• stripeSubscriptionId</div>
+            <div>• billingProvider: TEAM_OWNER</div>
+          </div>
+        </div>
+        <div class="diagram-branch-box no" style="background:#1a1a2e;border-color:#6366f1">
+          <div class="diagram-branch-title" style="color:#a5b4fc">NO PAYMENT METHOD</div>
+          <div class="diagram-branch-text" style="color:#c7d2fe;font-size:12px">
+            <div style="margin-bottom:6px"><strong>5b.</strong> <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px;font-size:11px">stripe.checkout.sessions.create()</code></div>
+            <div style="margin-bottom:6px">• metadata: { forMemberId, teamId }</div>
+            <div style="margin-bottom:6px"><strong>6b.</strong> Return checkout URL</div>
+            <div>→ Webhook handles TeamMember update</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

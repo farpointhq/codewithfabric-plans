@@ -138,10 +138,43 @@
   .chain-legend-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #9ca3af; }
   .chain-legend-dot { width: 10px; height: 10px; border-radius: 3px; }
 
+  /* Summary review panel */
+  .review-section { max-width: 1200px; margin: 28px auto 0; }
+  .review-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; }
+  .review-title { font-size: 18px; font-weight: 700; color: #a5b4fc; }
+  .review-subtitle { font-size: 13px; color: #9ca3af; }
+  .review-empty { color: #6b7280; font-size: 13px; font-style: italic; padding: 20px; text-align: center; }
+
+  .review-card { background: #111827; border: 1px solid #1f2937; border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
+  .review-card-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #1f2937; cursor: pointer; }
+  .review-card-header:hover { background: rgba(255,255,255,0.02); }
+  .review-card-icon { font-size: 16px; }
+  .review-card-label { font-size: 12px; font-weight: 600; color: #e5e5e5; }
+  .review-card-meta { font-size: 11px; color: #9ca3af; font-family: monospace; margin-left: auto; }
+  .review-card-reduction { font-size: 11px; font-weight: 700; color: #34d399; padding: 2px 8px; background: rgba(52,211,153,0.1); border-radius: 4px; }
+  .review-card-toggle { font-size: 10px; color: #6b7280; transition: transform 0.2s; }
+  .review-card-toggle.open { transform: rotate(90deg); }
+
+  .review-card-body { display: none; }
+  .review-card-body.open { display: block; }
+
+  .review-columns { display: grid; grid-template-columns: 1fr 1fr; }
+  .review-col { padding: 14px 16px; }
+  .review-col:first-child { border-right: 1px solid #1f2937; }
+  .review-col-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .review-col-title.raw { color: #f87171; }
+  .review-col-title.summary { color: #34d399; }
+  .review-col-content { font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; max-height: 400px; overflow-y: auto; }
+  .review-col-content.raw-text { color: #9ca3af; }
+  .review-col-content.summary-text { color: #a5b4fc; font-style: italic; }
+  .review-col-tokens { font-size: 10px; color: #6b7280; font-family: monospace; margin-top: 8px; padding-top: 6px; border-top: 1px solid #1f2937; }
+
   /* Responsive */
   @media (max-width: 900px) {
     .main { flex-direction: column; }
     .right-panel { width: 100%; }
+    .review-columns { grid-template-columns: 1fr; }
+    .review-col:first-child { border-right: none; border-bottom: 1px solid #1f2937; }
   }
 </style>
 </head>
@@ -275,6 +308,15 @@
     <div class="chain-legend-item"><div class="chain-legend-dot" style="background:#4b5563;"></div> Raw output</div>
     <div class="chain-legend-item"><div class="chain-legend-dot" style="background:#4f46e5; border: 1px solid #818cf8;"></div> Summarized (compressed)</div>
   </div>
+</div>
+
+<!-- Summary Quality Review -->
+<div class="review-section" id="reviewSection">
+  <div class="review-header">
+    <div class="review-title">Summary Quality Review</div>
+    <div class="review-subtitle">Side-by-side comparison of raw content vs summarized output — click to expand</div>
+  </div>
+  <div id="reviewCards"></div>
 </div>
 
 <script>
@@ -713,6 +755,7 @@ function updateStats() {
     : '—';
 
   renderCompactedChain();
+  renderReviewCards();
 }
 
 // ============================================================================
@@ -803,6 +846,66 @@ function renderCompactedChain() {
   document.getElementById('savingsBarRawLabel').textContent = `${totalRawTokens.toLocaleString()} tok`;
   document.getElementById('savingsBarCompacted').style.width = `${compactedPct}%`;
   document.getElementById('savingsBarCompactedLabel').textContent = compactedPct < 95 ? `${totalCompactedTokens.toLocaleString()} tok` : '';
+}
+
+// ============================================================================
+// Summary Quality Review
+// ============================================================================
+
+function renderReviewCards() {
+  const container = document.getElementById('reviewCards');
+  const summarized = blocks.filter(b => b.summary?.status === 'complete');
+
+  if (summarized.length === 0) {
+    container.innerHTML = '<div class="review-empty">No summaries yet. Run summarization to see quality comparisons here.</div>';
+    return;
+  }
+
+  container.innerHTML = summarized.map(block => {
+    const i = block.index;
+    const reduction = Math.round((1 - block.summary.tokens / block.tokens) * 100);
+    const typeLabel = { 'thinking': 'Thinking', 'tool-result': 'Tool Result', 'raw-output': 'Raw Output' }[block.type] || block.type;
+
+    return `
+      <div class="review-card" id="reviewCard${i}">
+        <div class="review-card-header" onclick="toggleReviewCard(${i})">
+          <span class="review-card-icon">${block.icon}</span>
+          <span class="review-card-label">B[${i}] ${typeLabel}${block.toolName ? ' — ' + block.toolName : ''}</span>
+          <span class="review-card-meta">${block.tokens} → ${block.summary.tokens} tok</span>
+          <span class="review-card-reduction">-${reduction}%</span>
+          <span class="review-card-toggle" id="reviewToggle${i}">&#9654;</span>
+        </div>
+        <div class="review-card-body" id="reviewBody${i}">
+          <div class="review-columns">
+            <div class="review-col">
+              <div class="review-col-title raw">Original (${block.tokens} tokens)</div>
+              <div class="review-col-content raw-text">${escapeHtml(block.content)}</div>
+              <div class="review-col-tokens">${block.tokens} tokens · ${block.content.length} chars</div>
+            </div>
+            <div class="review-col">
+              <div class="review-col-title summary">Summary (${block.summary.tokens} tokens)</div>
+              <div class="review-col-content summary-text">${escapeHtml(block.summary.text)}</div>
+              <div class="review-col-tokens">${block.summary.tokens} tokens · ${block.summary.text.length} chars · ${reduction}% reduction</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleReviewCard(index) {
+  const body = document.getElementById(`reviewBody${index}`);
+  const toggle = document.getElementById(`reviewToggle${index}`);
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open');
+  toggle.classList.toggle('open');
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // ============================================================================

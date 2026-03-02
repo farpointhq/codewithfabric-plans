@@ -96,6 +96,48 @@
   .prompt-target { color: #fbbf24; background: rgba(251, 191, 36, 0.08); }
   .prompt-next { color: #4ade80; }
 
+  /* Compacted chain visualization */
+  .chain-section { max-width: 1200px; margin: 28px auto 0; }
+  .chain-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; }
+  .chain-title { font-size: 18px; font-weight: 700; color: #a5b4fc; }
+  .chain-subtitle { font-size: 13px; color: #9ca3af; }
+
+  .chain-comparison { display: flex; flex-direction: column; gap: 20px; }
+  .chain-track { background: #111827; border: 1px solid #1f2937; border-radius: 10px; padding: 16px; }
+  .chain-track-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .chain-track-label { font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .chain-track-label.raw { color: #f87171; }
+  .chain-track-label.compacted { color: #34d399; }
+  .chain-track-total { font-size: 12px; font-family: monospace; }
+
+  .chain-bars { display: flex; gap: 2px; align-items: flex-end; min-height: 60px; }
+  .chain-bar { border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 3px 1px; min-width: 4px; position: relative; cursor: default; transition: opacity 0.2s; }
+  .chain-bar:hover { opacity: 0.85; }
+  .chain-bar .bar-label { font-size: 8px; color: rgba(255,255,255,0.7); writing-mode: vertical-lr; text-orientation: mixed; white-space: nowrap; overflow: hidden; max-height: 50px; transform: rotate(180deg); }
+  .chain-bar .bar-tokens { font-size: 8px; color: rgba(255,255,255,0.5); font-family: monospace; margin-top: 2px; white-space: nowrap; }
+
+  .chain-bar.user { background: #2563eb; }
+  .chain-bar.thinking { background: #7c3aed; }
+  .chain-bar.tool-call { background: #16a34a; }
+  .chain-bar.tool-result { background: #059669; }
+  .chain-bar.raw-output { background: #4b5563; }
+  .chain-bar.summarized { background: #4f46e5; border: 1px solid #818cf8; }
+
+  .chain-bar-tooltip { display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #1f2937; border: 1px solid #374151; border-radius: 6px; padding: 6px 10px; font-size: 11px; white-space: nowrap; z-index: 10; pointer-events: none; margin-bottom: 4px; }
+  .chain-bar:hover .chain-bar-tooltip { display: block; }
+
+  .chain-savings { display: flex; align-items: center; gap: 16px; background: #111827; border: 1px solid #1f2937; border-radius: 10px; padding: 16px; }
+  .savings-big { font-size: 36px; font-weight: 800; color: #34d399; font-family: monospace; }
+  .savings-detail { font-size: 12px; color: #9ca3af; line-height: 1.6; }
+  .savings-bar-bg { flex: 1; height: 24px; background: #1f2937; border-radius: 6px; overflow: hidden; position: relative; }
+  .savings-bar-fill { height: 100%; border-radius: 6px; transition: width 0.5s ease; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font-size: 11px; font-weight: 700; }
+  .savings-bar-fill.raw { background: linear-gradient(90deg, #dc2626, #f87171); color: white; }
+  .savings-bar-fill.compacted { background: linear-gradient(90deg, #059669, #34d399); color: white; position: absolute; top: 0; left: 0; }
+
+  .chain-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
+  .chain-legend-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #9ca3af; }
+  .chain-legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
   /* Responsive */
   @media (max-width: 900px) {
     .main { flex-direction: column; }
@@ -136,9 +178,15 @@
     </div>
 
     <div class="btn-row" style="margin-bottom: 12px;">
-      <button class="btn btn-primary" onclick="loadSampleConversation()">Load Sample Conversation</button>
+      <select id="conversationSelector" onchange="loadSelectedConversation()" style="background: #1f2937; border: 1px solid #374151; border-radius: 6px; padding: 8px 12px; color: #e5e5e5; font-size: 12px; font-family: inherit; min-width: 200px;">
+        <option value="sample">Mock: Flask project (synthetic)</option>
+        <option value="real-0">Real: /implement issue-1774 (thinking+tools)</option>
+        <option value="real-1">Real: Glob tool calling test (huge results)</option>
+        <option value="real-2">Real: Glob + file reading (batch)</option>
+      </select>
       <button class="btn btn-primary" onclick="runFullSummarization()" id="btnRunAll">Summarize All Eligible</button>
       <button class="btn btn-secondary" onclick="stepSummarize()" id="btnStep">Step (Next Block)</button>
+      <button class="btn btn-secondary" onclick="saveResults()">Save Results</button>
       <button class="btn btn-danger" onclick="resetSummaries()">Reset Summaries</button>
     </div>
 
@@ -173,6 +221,59 @@
         <div>Compression: <span id="statCompression">—</span></div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Compacted Chain Visualization -->
+<div class="chain-section" id="chainSection">
+  <div class="chain-header">
+    <div class="chain-title">Compacted Chain</div>
+    <div class="chain-subtitle">What the prompt builder sends to the LLM — raw blocks vs blocks with summaries swapped in</div>
+  </div>
+
+  <div class="chain-comparison">
+    <!-- Savings bar -->
+    <div class="chain-savings" id="chainSavings">
+      <div class="savings-big" id="savingsPct">0%</div>
+      <div class="savings-detail" id="savingsDetail">
+        Run summarization to see compression results
+      </div>
+      <div class="savings-bar-bg">
+        <div class="savings-bar-fill raw" id="savingsBarRaw" style="width: 100%;">
+          <span id="savingsBarRawLabel">—</span>
+        </div>
+        <div class="savings-bar-fill compacted" id="savingsBarCompacted" style="width: 0%;">
+          <span id="savingsBarCompactedLabel"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Raw track -->
+    <div class="chain-track">
+      <div class="chain-track-header">
+        <div class="chain-track-label raw">RAW (original)</div>
+        <div class="chain-track-total" id="rawTrackTotal" style="color: #f87171;">—</div>
+      </div>
+      <div class="chain-bars" id="rawBars"></div>
+    </div>
+
+    <!-- Compacted track -->
+    <div class="chain-track">
+      <div class="chain-track-header">
+        <div class="chain-track-label compacted">COMPACTED (summaries swapped in)</div>
+        <div class="chain-track-total" id="compactedTrackTotal" style="color: #34d399;">—</div>
+      </div>
+      <div class="chain-bars" id="compactedBars"></div>
+    </div>
+  </div>
+
+  <div class="chain-legend">
+    <div class="chain-legend-item"><div class="chain-legend-dot" style="background:#2563eb;"></div> User message</div>
+    <div class="chain-legend-item"><div class="chain-legend-dot" style="background:#7c3aed;"></div> Thinking</div>
+    <div class="chain-legend-item"><div class="chain-legend-dot" style="background:#16a34a;"></div> Tool call</div>
+    <div class="chain-legend-item"><div class="chain-legend-dot" style="background:#059669;"></div> Tool result</div>
+    <div class="chain-legend-item"><div class="chain-legend-dot" style="background:#4b5563;"></div> Raw output</div>
+    <div class="chain-legend-item"><div class="chain-legend-dot" style="background:#4f46e5; border: 1px solid #818cf8;"></div> Summarized (compressed)</div>
   </div>
 </div>
 
@@ -227,6 +328,7 @@ function loadSampleConversation() {
 
   renderBlocks();
   updateStats();
+  renderCompactedChain();
   log('info', `Loaded sample conversation: ${blocks.length} blocks`);
   stepIndex = 0;
 }
@@ -609,6 +711,8 @@ function updateStats() {
   document.getElementById('statCompression').textContent = rawTokens > 0
     ? `${Math.round((1 - afterTokens / rawTokens) * 100)}% reduction`
     : '—';
+
+  renderCompactedChain();
 }
 
 // ============================================================================
@@ -620,6 +724,241 @@ function log(level, message) {
   const time = new Date().toLocaleTimeString('en-US', { hour12: false });
   logEl.innerHTML += `<div class="log-entry ${level}">[${time}] ${message}</div>`;
   logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ============================================================================
+// Compacted Chain Visualization
+// ============================================================================
+
+function renderCompactedChain() {
+  if (blocks.length === 0) return;
+
+  const rawBarsEl = document.getElementById('rawBars');
+  const compactedBarsEl = document.getElementById('compactedBars');
+
+  // Find max tokens for scaling
+  const maxTokens = Math.max(...blocks.map(b => b.tokens), 1);
+  const maxBarHeight = 80; // px
+  const totalWidth = rawBarsEl.offsetWidth || 800;
+  const totalRawTokens = blocks.reduce((s, b) => s + b.tokens, 0);
+  const totalCompactedTokens = blocks.reduce((s, b) => {
+    if (b.summary?.status === 'complete') return s + b.summary.tokens;
+    return s + b.tokens;
+  }, 0);
+
+  // Build raw bars
+  rawBarsEl.innerHTML = blocks.map((block, i) => {
+    const widthPct = (block.tokens / totalRawTokens) * 100;
+    const height = Math.max(12, (block.tokens / maxTokens) * maxBarHeight);
+    const showLabel = widthPct > 3;
+    const showTokens = widthPct > 2;
+    return `
+      <div class="chain-bar ${block.type}" style="width: ${widthPct}%; height: ${height}px;" title="B[${i}] ${block.type}: ${block.tokens} tok">
+        <div class="chain-bar-tooltip">B[${i}] ${block.type}<br>${block.tokens} tokens</div>
+        ${showLabel ? `<div class="bar-label">${block.icon} ${block.type}</div>` : ''}
+        ${showTokens ? `<div class="bar-tokens">${block.tokens}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  // Build compacted bars
+  compactedBarsEl.innerHTML = blocks.map((block, i) => {
+    const isSummarized = block.summary?.status === 'complete';
+    const effectiveTokens = isSummarized ? block.summary.tokens : block.tokens;
+    const widthPct = (effectiveTokens / totalRawTokens) * 100; // scale against RAW total for visual comparison
+    const height = Math.max(12, (effectiveTokens / maxTokens) * maxBarHeight);
+    const cssClass = isSummarized ? 'summarized' : block.type;
+    const showLabel = widthPct > 3;
+    const showTokens = widthPct > 1.5;
+    const reduction = isSummarized ? ` (${Math.round((1 - block.summary.tokens / block.tokens) * 100)}% smaller)` : '';
+    return `
+      <div class="chain-bar ${cssClass}" style="width: ${widthPct}%; height: ${height}px;" title="B[${i}] ${block.type}: ${effectiveTokens} tok${reduction}">
+        <div class="chain-bar-tooltip">B[${i}] ${block.type}<br>${isSummarized ? `${block.tokens} → ${effectiveTokens} tok` : `${effectiveTokens} tok (unchanged)`}${reduction}</div>
+        ${showLabel ? `<div class="bar-label">${isSummarized ? '📦' : block.icon} ${block.type}</div>` : ''}
+        ${showTokens ? `<div class="bar-tokens">${effectiveTokens}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  // Update totals
+  document.getElementById('rawTrackTotal').textContent = `${totalRawTokens.toLocaleString()} tokens`;
+  document.getElementById('compactedTrackTotal').textContent = `${totalCompactedTokens.toLocaleString()} tokens`;
+
+  // Update savings
+  const pctSaved = totalRawTokens > 0 ? Math.round((1 - totalCompactedTokens / totalRawTokens) * 100) : 0;
+  document.getElementById('savingsPct').textContent = `${pctSaved}%`;
+  document.getElementById('savingsPct').style.color = pctSaved > 0 ? '#34d399' : '#9ca3af';
+
+  const summarizedCount = blocks.filter(b => b.summary?.status === 'complete').length;
+  const summarizableCount = blocks.filter(b => ['thinking', 'tool-result', 'raw-output'].includes(b.type) && b.tokens >= MIN_BLOCK_TOKENS).length;
+  document.getElementById('savingsDetail').innerHTML = `
+    <strong>${totalRawTokens.toLocaleString()}</strong> raw → <strong>${totalCompactedTokens.toLocaleString()}</strong> compacted<br>
+    ${summarizedCount}/${summarizableCount} blocks summarized · ${totalRawTokens - totalCompactedTokens} tokens saved
+  `;
+
+  // Savings bar
+  const rawPct = 100;
+  const compactedPct = totalRawTokens > 0 ? (totalCompactedTokens / totalRawTokens) * 100 : 100;
+  document.getElementById('savingsBarRaw').style.width = `${rawPct}%`;
+  document.getElementById('savingsBarRawLabel').textContent = `${totalRawTokens.toLocaleString()} tok`;
+  document.getElementById('savingsBarCompacted').style.width = `${compactedPct}%`;
+  document.getElementById('savingsBarCompactedLabel').textContent = compactedPct < 95 ? `${totalCompactedTokens.toLocaleString()} tok` : '';
+}
+
+// ============================================================================
+// Real conversation samples (extracted from Fabric chat histories)
+// ============================================================================
+
+const REAL_SAMPLES = [
+  {
+    title: "/implement issue-1774 (thinking + tools + raw_output)",
+    blocks: [
+      { type: "user", icon: "👤", content: "/implement https://farpointhq.github.io/fabric-plans/plans/issue-1774-plan/ — Execute the approved plan for drag-and-drop tab groups", tokens: 1984 },
+      { type: "thinking", icon: "💭", content: "The user is invoking the /implement command to execute an approved implementation plan. Let me follow the instructions step by step. Phase 1: Setup — Parse Plan URL: URL: https://farpointhq.github.io/fabric-plans/plans/issue-1774-plan/ ORG: farpointhq PLANS_REPO_NAME: fabric-plans REPO: fabric ISSUE_NUM: 1774 PLANS_REPO: farpointhq/fabric-plans. Let me start by cloning the plans repo and reading the plan.", tokens: 120 },
+      { type: "raw-output", icon: "💬", content: "I'll execute the implementation plan for issue #1774. Let me start with Phase 1: Setup.\n\n## Phase 1.1: Parse Plan URL", tokens: 31 },
+      { type: "tool-result", icon: "📄", content: "{\"exitCode\":0,\"stdout\":\"Organization: farpointhq\\nRepository: fabric\\nIssue: #1774\\nPlans repo: farpointhq/fabric-plans\\n\"}", tokens: 128, toolName: "Bash" },
+      { type: "thinking", icon: "💭", content: "Good, I've extracted the components: Organization: farpointhq, Repository: fabric, Issue: #1774, Plans repo: farpointhq/fabric-plans. Now let me clone/update the plans repo.", tokens: 45 },
+      { type: "raw-output", icon: "💬", content: "## Phase 1.2: Clone/Update Plans Repo", tokens: 10 },
+      { type: "tool-result", icon: "📄", content: "{\"exitCode\":0,\"stdout\":\"From github.com:farpointhq/fabric-plans\\n * branch main -> FETCH_HEAD\\nAlready up to date.\\n\"}", tokens: 131, toolName: "Bash" },
+      { type: "thinking", icon: "💭", content: "Good, the plans repo is already up to date. Now let me read the plan file.", tokens: 19 },
+      { type: "raw-output", icon: "💬", content: "## Phase 1.3: Read Plan Into Context", tokens: 10 },
+      { type: "tool-result", icon: "📄", content: "# Issue #1774: Drag and Drop Tabs Into/Out of Tab Groups and Reorder Tabs\n\n## Summary\nAdd drag-and-drop functionality to allow users to intuitively organize tabs by dragging them into/out of tab groups, reordering tabs within groups, and reordering tab groups themselves.\n\n## Root Cause Analysis\nCurrently, users can only add/remove tabs to/from groups via the context menu.", tokens: 1140, toolName: "Read" },
+      { type: "thinking", icon: "💭", content: "Now let me check for any referenced images in the plan.", tokens: 14 },
+      { type: "tool-result", icon: "📄", content: "{\"exitCode\":0,\"stdout\":\"issue-1774-before-after.png\\nissue-1774-process.png\\n\"}", tokens: 132, toolName: "Bash" },
+      { type: "thinking", icon: "💭", content: "Let me read the images to understand the visual context.", tokens: 15 },
+      { type: "tool-result", icon: "📄", content: "(Binary PNG image data — before/after diagram, 9129 tokens)", tokens: 9129, toolName: "Read" },
+      { type: "thinking", icon: "💭", content: "The image is a PNG showing a before/after diagram of the tab group drag-and-drop feature. Let me also read the second image to get the full context.", tokens: 25 },
+      { type: "tool-result", icon: "📄", content: "(Binary PNG image data — process flow diagram, 34304 tokens)", tokens: 34304, toolName: "Read" },
+      { type: "user", icon: "👤", content: "continue", tokens: 2 },
+    ],
+  },
+  {
+    title: "Glob tool calling test (huge tool results)",
+    blocks: [
+      { type: "user", icon: "👤", content: "run a bunch of globs please i want to test fast glob tool calling", tokens: 17 },
+      { type: "thinking", icon: "💭", content: "The user wants to run a bunch of globs to test the fast glob tool calling. The instructions say to use tools via function calls in the specified XML format.", tokens: 86 },
+      { type: "tool-result", icon: "📄", content: "{\"files\":[\"/Users/.../out/preload/index.js\",\"/Users/.../out/main/FileLoggerTransport.js\",...1000+ JS files in out/ and node_modules/]}", tokens: 33192, toolName: "Glob" },
+      { type: "tool-result", icon: "📄", content: "{\"files\":[\"/Users/.../src/main/lproc/llm/LlmService.ts\",...444 TypeScript source files in src/]}", tokens: 9891, toolName: "Glob" },
+      { type: "tool-result", icon: "📄", content: "{\"files\":[\"/Users/.../tests/model_tests/model-defaults.test.ts\",...167 test files]}", tokens: 3714, toolName: "Glob" },
+      { type: "tool-result", icon: "📄", content: "{\"files\":[\"/Users/.../package-lock.json\",...1000+ JSON files in node_modules/]}", tokens: 28727, toolName: "Glob" },
+      { type: "tool-result", icon: "📄", content: "{\"files\":[],\"count\":0,\"truncated\":false}", tokens: 10, toolName: "Glob" },
+      { type: "tool-result", icon: "📄", content: "{\"files\":[\"/Users/.../README.md\",...1000+ markdown files in node_modules/]}", tokens: 26991, toolName: "Glob" },
+      { type: "thinking", icon: "💭", content: "The user asked to run a bunch of globs to test fast glob tool calling. I executed several Glob tool calls with different patterns.", tokens: 41 },
+      { type: "raw-output", icon: "💬", content: "I successfully ran several Glob tool calls to test the fast glob functionality. Here's a summary:\n- **/*.js: Found 1000+ JavaScript files\n- src/**/*.ts: Found 444 TypeScript files\n- tests/**: Found 167 test files\n- **/*.json: Found 1000+ JSON files\n- src/main/**/*.py: Found 0 Python files\n- **/*.md: Found 1000+ markdown files", tokens: 198 },
+    ],
+  },
+  {
+    title: "Glob + file reading batch (batch tool results)",
+    blocks: [
+      { type: "user", icon: "👤", content: "Find all TypeScript, React, and test files in the project using Glob with pattern: [\"**/*.ts\", \"**/*.tsx\", \"**/*.test.ts\"]", tokens: 32 },
+      { type: "tool-result", icon: "📄", content: "{\"_batch\":true,\"results\":{\"**/*.ts\":{\"files\":[\"keyboardShortcuts.ts\",\"menu-manager.service.ts\",...1000+ files]},\"**/*.tsx\":{\"files\":[...]},\"**/*.test.ts\":{\"files\":[...]}}}", tokens: 2655, toolName: "Glob" },
+      { type: "raw-output", icon: "💬", content: "Here are the results of the Glob search for TypeScript, React, and test files:\n\n### TypeScript Files\n- Total: 1000+ (truncated)\n\n### React/TSX Files\n- Total: 200+\n\n### Test Files\n- Total: 167", tokens: 2730 },
+      { type: "user", icon: "👤", content: "what was the 999th glob result for each search?", tokens: 12 },
+      { type: "tool-result", icon: "📄", content: "// keyboardShortcuts.ts\nexport const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;\nexport const dynamicCtrlKey = isMac ? '⌘' : 'Ctrl';\nexport interface KeyboardShortcut { description: string; keys: string[]; }", tokens: 1420, toolName: "Read" },
+      { type: "tool-result", icon: "📄", content: "// menu-manager.service.ts\nimport { app, Menu, MenuItemConstructorOptions, dialog, shell, BrowserWindow, MenuItem } from 'electron';\nimport { WindowManager } from './window-manager.service';", tokens: 2170, toolName: "Read" },
+      { type: "tool-result", icon: "📄", content: "// globOverflow.test.ts\nimport { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';\nimport fg from 'fast-glob';\nimport { GlobHandler } from '../globHandler';", tokens: 1565, toolName: "Read" },
+      { type: "tool-result", icon: "📄", content: "// globHandler.ts\nimport fg from 'fast-glob';\nimport { ToolHandler, ToolResult } from '../types';\nimport { toolRegistry } from '../ToolRegistry';", tokens: 2611, toolName: "Read" },
+      { type: "tool-result", icon: "📄", content: "// editHandler.ts\nimport { promises as fs } from 'node:fs';\nimport { fuzzySearchAndReplace, findSimilarContent, hasWhitespaceMismatch } from './fuzzyMatch';", tokens: 9062, toolName: "Read" },
+      { type: "tool-result", icon: "📄", content: "// readHandler.ts — Read Tool with offset/limit and batch support (Issue #1252, #1611)\nimport { ToolHandler, ToolResult, PrepareResult } from '../types';", tokens: 3160, toolName: "Read" },
+      { type: "tool-result", icon: "📄", content: "// writeHandler.ts — Write Tool with safety checks and batch support\nimport fs from 'node:fs/promises';\nimport { checkDirectoryPermission } from './toolValidation';", tokens: 5846, toolName: "Read" },
+      { type: "tool-result", icon: "📄", content: "// searchHandler.ts — Project search tool with batch support\nimport { projectSearch as runProjectSearch } from '../../tools/searchTool';", tokens: 2063, toolName: "Read" },
+      { type: "tool-result", icon: "📄", content: "/* Chat Store v2 message schema — defines ChatMessage v2 (UserMsgData | AssistantMsgData), ChatStore singleton on globalThis.chatStore, updateMessage() with stream processor patches */", tokens: 41691, toolName: "Read" },
+    ],
+  },
+];
+
+// ============================================================================
+// Conversation loading
+// ============================================================================
+
+function loadSelectedConversation() {
+  const selector = document.getElementById('conversationSelector');
+  const value = selector.value;
+
+  if (value === 'sample') {
+    loadSampleConversation();
+    return;
+  }
+
+  // Real sample
+  const match = value.match(/^real-(\d+)$/);
+  if (match) {
+    const idx = parseInt(match[1]);
+    const sample = REAL_SAMPLES[idx];
+    if (!sample) {
+      log('error', `Sample ${idx} not found`);
+      return;
+    }
+
+    blocks = sample.blocks.map((b, i) => ({
+      ...b,
+      index: i,
+      summary: null,
+    }));
+
+    renderBlocks();
+    updateStats();
+    renderCompactedChain();
+    log('info', `Loaded real conversation: "${sample.title}" — ${blocks.length} blocks`);
+    stepIndex = 0;
+    selectedBlockIndex = -1;
+    document.getElementById('blockDetails').innerHTML = 'Click a block to inspect it';
+    document.getElementById('promptPreview').innerHTML = 'Select a summarizable block to see its prompt';
+  }
+}
+
+// ============================================================================
+// Save results
+// ============================================================================
+
+function saveResults() {
+  const results = {
+    timestamp: new Date().toISOString(),
+    config: {
+      apiEndpoint: document.getElementById('apiEndpoint').value,
+      model: document.getElementById('modelName').value,
+      prevWindow: parseInt(document.getElementById('prevWindow').value),
+      nextWindow: parseInt(document.getElementById('nextWindow').value),
+      minBlockTokens: MIN_BLOCK_TOKENS,
+    },
+    conversation: document.getElementById('conversationSelector').selectedOptions[0]?.text || 'unknown',
+    blocks: blocks.map((b, i) => ({
+      index: i,
+      type: b.type,
+      tokens: b.tokens,
+      contentPreview: b.content.substring(0, 200),
+      summary: b.summary ? {
+        text: b.summary.text,
+        tokens: b.summary.tokens,
+        status: b.summary.status,
+        reduction: b.summary.status === 'complete' ? `${Math.round((1 - b.summary.tokens / b.tokens) * 100)}%` : null,
+      } : null,
+      prompt: ['thinking', 'tool-result', 'raw-output'].includes(b.type) && b.tokens >= MIN_BLOCK_TOKENS
+        ? buildPrompt(i).promptText
+        : null,
+    })),
+    stats: {
+      totalBlocks: blocks.length,
+      summarizable: blocks.filter(b => ['thinking', 'tool-result', 'raw-output'].includes(b.type) && b.tokens >= MIN_BLOCK_TOKENS).length,
+      summarized: blocks.filter(b => b.summary?.status === 'complete').length,
+      rawTokens: blocks.reduce((s, b) => s + b.tokens, 0),
+      compactedTokens: blocks.reduce((s, b) => b.summary?.status === 'complete' ? s + b.summary.tokens : s + b.tokens, 0),
+    },
+  };
+
+  results.stats.compressionPct = results.stats.rawTokens > 0
+    ? `${Math.round((1 - results.stats.compactedTokens / results.stats.rawTokens) * 100)}%`
+    : '0%';
+
+  const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `summarization-results-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  log('success', `Results saved: ${results.stats.summarized}/${results.stats.summarizable} blocks, ${results.stats.compressionPct} compression`);
 }
 
 // ============================================================================

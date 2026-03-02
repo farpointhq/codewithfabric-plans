@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Block Summarization Simulator — Issue #1810</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a0a; color: #e5e5e5; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; padding: 20px; }
+
+  .header { max-width: 1200px; margin: 0 auto 20px; }
+  .header h1 { font-size: 22px; color: #a5b4fc; margin-bottom: 4px; }
+  .header p { font-size: 13px; color: #9ca3af; }
+
+  .main { display: flex; gap: 16px; max-width: 1200px; margin: 0 auto; }
+  .left-panel { flex: 1; min-width: 0; }
+  .right-panel { width: 400px; flex-shrink: 0; }
+
+  /* Config bar */
+  .config-bar { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .config-bar label { font-size: 11px; color: #9ca3af; display: flex; flex-direction: column; gap: 4px; }
+  .config-bar input, .config-bar select { background: #1f2937; border: 1px solid #374151; border-radius: 4px; padding: 4px 8px; color: #e5e5e5; font-size: 12px; font-family: inherit; }
+  .config-bar input[type="number"] { width: 60px; }
+  .config-bar input[type="text"] { width: 260px; }
+
+  /* Block list */
+  .block-list { display: flex; flex-direction: column; gap: 4px; }
+  .block-entry { display: flex; align-items: stretch; gap: 6px; }
+  .block-index { font-size: 10px; color: #6b7280; width: 36px; text-align: right; font-family: monospace; padding-top: 8px; flex-shrink: 0; }
+  .block-card { flex: 1; border-radius: 6px; padding: 8px 12px; font-size: 12px; border: 1px solid; cursor: pointer; transition: box-shadow 0.2s; position: relative; min-height: 36px; }
+  .block-card:hover { box-shadow: 0 0 0 1px rgba(255,255,255,0.1); }
+  .block-card.selected { box-shadow: 0 0 0 2px #fbbf24 !important; }
+  .block-card.in-window { box-shadow: 0 0 8px rgba(99, 102, 241, 0.3); }
+
+  .block-card.user { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; }
+  .block-card.thinking { background: #2d1a3e; border-color: #a855f7; color: #d8b4fe; }
+  .block-card.tool-call { background: #1a3a2a; border-color: #22c55e; color: #86efac; }
+  .block-card.tool-result { background: #162b1f; border-color: #059669; color: #6ee7b7; }
+  .block-card.raw-output { background: #1f2937; border-color: #6b7280; color: #d1d5db; }
+
+  .block-header { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+  .block-icon { font-size: 13px; }
+  .block-type { font-size: 10px; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.5px; }
+  .block-tokens { font-size: 9px; opacity: 0.5; font-family: monospace; margin-left: auto; }
+  .block-text { font-size: 11px; opacity: 0.85; line-height: 1.4; max-height: 60px; overflow: hidden; }
+
+  /* Summary badge */
+  .summary-badge { position: absolute; top: 4px; right: 4px; font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: 600; }
+  .summary-badge.pending { background: #92400e; color: #fbbf24; }
+  .summary-badge.complete { background: #064e3b; color: #34d399; }
+  .summary-badge.failed { background: #7f1d1d; color: #f87171; }
+  .summary-badge.in-progress { background: #312e81; color: #818cf8; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+  /* Window indicator */
+  .window-marker { position: absolute; left: -4px; top: 0; bottom: 0; width: 3px; border-radius: 2px; }
+  .window-marker.prev { background: #6366f1; }
+  .window-marker.target { background: #fbbf24; }
+  .window-marker.next { background: #22c55e; }
+  .window-marker.first-user { background: #3b82f6; }
+
+  /* Right panel */
+  .panel-section { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+  .panel-title { font-size: 13px; font-weight: 600; color: #a5b4fc; margin-bottom: 10px; }
+  .panel-subtitle { font-size: 11px; color: #9ca3af; margin-bottom: 8px; }
+
+  /* Summary display */
+  .summary-text { font-size: 12px; color: #a5b4fc; font-style: italic; padding: 8px; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 6px; line-height: 1.5; margin-bottom: 8px; }
+  .summary-meta { font-size: 10px; color: #6b7280; }
+
+  /* Controls */
+  .btn { padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; font-family: inherit; transition: background 0.2s; }
+  .btn-primary { background: #4338ca; color: white; }
+  .btn-primary:hover { background: #4f46e5; }
+  .btn-primary:disabled { background: #374151; color: #6b7280; cursor: not-allowed; }
+  .btn-secondary { background: #1f2937; color: #d1d5db; border: 1px solid #374151; }
+  .btn-secondary:hover { background: #374151; }
+  .btn-danger { background: #7f1d1d; color: #f87171; }
+  .btn-danger:hover { background: #991b1b; }
+
+  .btn-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+  /* Log */
+  .log { max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 11px; padding: 8px; background: #0d1117; border-radius: 4px; line-height: 1.6; }
+  .log-entry { color: #9ca3af; }
+  .log-entry.info { color: #60a5fa; }
+  .log-entry.success { color: #34d399; }
+  .log-entry.error { color: #f87171; }
+  .log-entry.warn { color: #fbbf24; }
+
+  /* Prompt preview */
+  .prompt-preview { max-height: 300px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 10px; background: #0d1117; border: 1px solid #21262d; border-radius: 6px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+  .prompt-label { color: #7c3aed; font-weight: 600; }
+  .prompt-dim { color: #4b5563; }
+  .prompt-user-msg { color: #60a5fa; }
+  .prompt-summary { color: #818cf8; font-style: italic; }
+  .prompt-target { color: #fbbf24; background: rgba(251, 191, 36, 0.08); }
+  .prompt-next { color: #4ade80; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .main { flex-direction: column; }
+    .right-panel { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Block Summarization Simulator</h1>
+  <p>Issue #1810 — Visualize the rolling window algorithm with real LLM calls to fabric-small</p>
+</div>
+
+<div class="main">
+  <div class="left-panel">
+    <div class="config-bar">
+      <label>
+        API Endpoint
+        <input type="text" id="apiEndpoint" value="https://api.codewithfabric.com/v1" placeholder="https://api.codewithfabric.com/v1">
+      </label>
+      <label>
+        Model
+        <input type="text" id="modelName" value="fabric-small" placeholder="fabric-small">
+      </label>
+      <label>
+        Prev Window
+        <input type="number" id="prevWindow" value="5" min="1" max="10">
+      </label>
+      <label>
+        Next Window
+        <input type="number" id="nextWindow" value="2" min="0" max="5">
+      </label>
+      <label>
+        API Key
+        <input type="text" id="apiKey" placeholder="optional" style="width:120px;">
+      </label>
+    </div>
+
+    <div class="btn-row" style="margin-bottom: 12px;">
+      <button class="btn btn-primary" onclick="loadSampleConversation()">Load Sample Conversation</button>
+      <button class="btn btn-primary" onclick="runFullSummarization()" id="btnRunAll">Summarize All Eligible</button>
+      <button class="btn btn-secondary" onclick="stepSummarize()" id="btnStep">Step (Next Block)</button>
+      <button class="btn btn-danger" onclick="resetSummaries()">Reset Summaries</button>
+    </div>
+
+    <div class="block-list" id="blockList"></div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-section">
+      <div class="panel-title">Selected Block Details</div>
+      <div id="blockDetails" style="font-size: 12px; color: #9ca3af;">Click a block to inspect it</div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">Prompt Preview</div>
+      <div class="panel-subtitle">The exact prompt that would be sent to fabric-small for the selected block</div>
+      <div class="prompt-preview" id="promptPreview">Select a summarizable block to see its prompt</div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">Activity Log</div>
+      <div class="log" id="activityLog"></div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">Stats</div>
+      <div id="stats" style="font-size: 12px; color: #9ca3af;">
+        <div>Total blocks: <span id="statTotal">0</span></div>
+        <div>Summarizable: <span id="statSummarizable">0</span></div>
+        <div>Summarized: <span id="statSummarized">0</span></div>
+        <div>Total tokens (raw): <span id="statRawTokens">0</span></div>
+        <div>Total tokens (after): <span id="statAfterTokens">0</span></div>
+        <div>Compression: <span id="statCompression">—</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================================
+// State
+// ============================================================================
+
+const MIN_BLOCK_TOKENS = 100;
+let blocks = [];
+let selectedBlockIndex = -1;
+let isRunning = false;
+let stepIndex = 0;
+
+// ============================================================================
+// Sample conversation
+// ============================================================================
+
+function loadSampleConversation() {
+  blocks = [
+    { type: 'user', icon: '👤', content: 'Read the config.json and requirements.txt files. Explain them briefly.', tokens: 25 },
+    { type: 'thinking', icon: '💭', content: 'The user wants me to read two files: config.json (likely a Node.js project config) and requirements.txt (Python dependencies). Let me read both files to understand the project setup and then provide a brief explanation of each. I should look for key information like project name, version, main dependencies, and what the project does based on these config files.', tokens: 180 },
+    { type: 'tool-call', icon: '🔧', content: 'Read(config.json)', tokens: 15 },
+    { type: 'tool-result', icon: '📄', content: '{"name": "my-flask-app", "version": "2.1.0", "description": "Full-stack app with React frontend and Flask ML backend", "main": "src/index.js", "scripts": {"start": "react-scripts start", "build": "react-scripts build", "test": "jest --coverage", "eject": "react-scripts eject", "lint": "eslint src/", "format": "prettier --write src/"}, "dependencies": {"react": "^18.2.0", "react-dom": "^18.2.0", "react-router-dom": "^6.14.0", "axios": "^1.4.0", "@mui/material": "^5.13.0", "chart.js": "^4.3.0", "react-chartjs-2": "^5.2.0", "zustand": "^4.3.8", "immer": "^10.0.2"}, "devDependencies": {"@testing-library/react": "^14.0.0", "jest": "^29.5.0", "eslint": "^8.43.0", "prettier": "^3.0.0", "typescript": "^5.1.0"}}', tokens: 520 },
+    { type: 'tool-call', icon: '🔧', content: 'Read(requirements.txt)', tokens: 15 },
+    { type: 'tool-result', icon: '📄', content: 'flask==2.3.0\nflask-cors==4.0.0\nflask-sqlalchemy==3.0.5\ngunicorn==21.2.0\nrequests==2.31.0\nnumpy==1.24.3\npandas==2.0.3\nscikit-learn==1.2.2\ntensorflow==2.13.0\nkeras==2.13.1\nmatplotlib==3.7.2\nseaborn==0.12.2\njupyter==1.0.0\npytest==7.4.0\nblack==23.7.0\nflake8==6.0.0\nmypy==1.4.1\ncelery==5.3.1\nredis==4.6.0\npsycopg2-binary==2.9.6\nalembic==1.11.1', tokens: 340 },
+    { type: 'thinking', icon: '💭', content: 'Now I have both files. Let me analyze them:\n\nconfig.json (package.json format):\n- Project: "my-flask-app" v2.1.0, a full-stack app\n- Frontend: React 18 with MUI, Chart.js for visualization, Zustand for state\n- Dev tools: TypeScript, Jest, ESLint, Prettier\n- It\'s the frontend portion of a full-stack app\n\nrequirements.txt:\n- Backend: Flask 2.3 with CORS and SQLAlchemy ORM\n- ML stack: TensorFlow 2.13, scikit-learn, numpy, pandas\n- Data viz: matplotlib, seaborn, jupyter\n- Infrastructure: Celery (task queue), Redis, PostgreSQL\n- Deployment: gunicorn\n- Quality: pytest, black, flake8, mypy\n\nThis is clearly a full-stack project with a React frontend and Flask ML backend. The ML stack suggests it does model training/inference.', tokens: 250 },
+    { type: 'raw-output', icon: '💬', content: 'Here\'s a brief explanation of both files:\n\n**config.json** (package.json)\nThis defines the frontend of a full-stack application called "my-flask-app" v2.1.0. Key highlights:\n- **Framework**: React 18 with React Router for SPA navigation\n- **UI**: Material UI (MUI) for components, Chart.js for data visualization\n- **State Management**: Zustand with Immer for immutable state updates\n- **Dev Tools**: TypeScript, Jest for testing, ESLint + Prettier for code quality\n\n**requirements.txt**\nThis defines the Python backend dependencies:\n- **Web Framework**: Flask 2.3 with CORS support and SQLAlchemy ORM\n- **ML Stack**: TensorFlow 2.13, scikit-learn, NumPy, Pandas — this is a machine learning backend\n- **Data Visualization**: Matplotlib, Seaborn, Jupyter for analysis\n- **Infrastructure**: Celery + Redis for async task processing, PostgreSQL (via psycopg2)\n- **Deployment**: Gunicorn as the WSGI server\n- **Quality**: pytest, black, flake8, mypy\n\n**Architecture**: This is a full-stack ML application — React frontend for visualization and interaction, Flask backend for model training/inference, with Celery handling long-running ML tasks asynchronously.', tokens: 420 },
+    { type: 'user', icon: '👤', content: 'Now refactor the Flask app to use blueprints. Start by reading app.py.', tokens: 18 },
+    { type: 'thinking', icon: '💭', content: 'The user wants to refactor the Flask application to use blueprints. This is a good architectural improvement — blueprints allow organizing Flask routes into modular components. I need to:\n\n1. First read app.py to understand the current route structure\n2. Identify logical groupings of routes (API, pages, auth, etc.)\n3. Create separate blueprint files for each group\n4. Update app.py to register the blueprints\n5. Handle any shared dependencies (db, auth decorators)\n\nLet me start by reading the current app.py to see what we\'re working with.', tokens: 300 },
+    { type: 'tool-call', icon: '🔧', content: 'Read(app.py)', tokens: 12 },
+    { type: 'tool-result', icon: '📄', content: 'from flask import Flask, render_template, jsonify, request, redirect, url_for, session\nfrom flask_cors import CORS\nfrom flask_sqlalchemy import SQLAlchemy\nfrom functools import wraps\nimport os\nimport json\n\napp = Flask(__name__)\napp.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev")\napp.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")\nCORS(app)\ndb = SQLAlchemy(app)\n\ndef login_required(f):\n    @wraps(f)\n    def decorated(*args, **kwargs):\n        if "user_id" not in session:\n            return jsonify({"error": "unauthorized"}), 401\n        return f(*args, **kwargs)\n    return decorated\n\n@app.route("/")\ndef index():\n    return render_template("index.html")\n\n@app.route("/dashboard")\n@login_required\ndef dashboard():\n    return render_template("dashboard.html")\n\n@app.route("/api/models", methods=["GET"])\n@login_required\ndef list_models():\n    models = Model.query.filter_by(user_id=session["user_id"]).all()\n    return jsonify([m.to_dict() for m in models])\n\n@app.route("/api/models", methods=["POST"])\n@login_required\ndef create_model():\n    data = request.get_json()\n    model = Model(name=data["name"], user_id=session["user_id"])\n    db.session.add(model)\n    db.session.commit()\n    return jsonify(model.to_dict()), 201\n\n@app.route("/api/models/<int:id>", methods=["DELETE"])\n@login_required\ndef delete_model(id):\n    model = Model.query.get_or_404(id)\n    db.session.delete(model)\n    db.session.commit()\n    return jsonify({"ok": True})\n\n@app.route("/api/predict", methods=["POST"])\n@login_required\ndef predict():\n    data = request.get_json()\n    model = Model.query.get_or_404(data["model_id"])\n    result = run_prediction(model, data["input"])\n    return jsonify(result)\n\n@app.route("/api/train", methods=["POST"])\n@login_required\ndef train_model():\n    data = request.get_json()\n    task = celery.send_task("train", args=[data])\n    return jsonify({"task_id": task.id})\n\n@app.route("/api/auth/login", methods=["POST"])\ndef login():\n    data = request.get_json()\n    user = User.query.filter_by(email=data["email"]).first()\n    if user and user.check_password(data["password"]):\n        session["user_id"] = user.id\n        return jsonify(user.to_dict())\n    return jsonify({"error": "invalid credentials"}), 401\n\n@app.route("/api/auth/logout", methods=["POST"])\ndef logout():\n    session.clear()\n    return jsonify({"ok": True})\n\nif __name__ == "__main__":\n    app.run(debug=True)', tokens: 1800 },
+    { type: 'thinking', icon: '💭', content: 'Looking at app.py, I can identify these logical groupings:\n\n1. **Auth routes** (/api/auth/*): login, logout — these handle authentication\n2. **API routes** (/api/models/*, /api/predict, /api/train): the main ML API\n3. **Page routes** (/, /dashboard): server-rendered HTML pages\n4. **Shared**: db instance, login_required decorator, app config\n\nPlan:\n- Create routes/__init__.py (empty)\n- Create routes/auth.py (auth blueprint with login/logout)\n- Create routes/api.py (api blueprint with model CRUD, predict, train)\n- Create routes/pages.py (pages blueprint with index, dashboard)\n- Move login_required to a shared utils/auth.py or keep in app.py\n- Update app.py to be just app factory + blueprint registration\n\nLet me start implementing this.', tokens: 280 },
+    { type: 'tool-call', icon: '🔧', content: 'Write(routes/__init__.py) → empty file', tokens: 20 },
+    { type: 'tool-result', icon: '📄', content: 'File created: routes/__init__.py (0 lines)', tokens: 15 },
+    { type: 'tool-call', icon: '🔧', content: 'Write(routes/auth.py) → auth blueprint with login/logout routes', tokens: 180 },
+    { type: 'tool-result', icon: '📄', content: 'File created: routes/auth.py (28 lines)', tokens: 20 },
+    { type: 'tool-call', icon: '🔧', content: 'Write(routes/api.py) → api blueprint with model CRUD, predict, train routes', tokens: 350 },
+    { type: 'tool-result', icon: '📄', content: 'File created: routes/api.py (52 lines)', tokens: 22 },
+    { type: 'tool-call', icon: '🔧', content: 'Write(routes/pages.py) → pages blueprint with index, dashboard routes', tokens: 120 },
+    { type: 'tool-result', icon: '📄', content: 'File created: routes/pages.py (16 lines)', tokens: 18 },
+    { type: 'tool-call', icon: '🔧', content: 'Edit(app.py) → remove routes, import and register blueprints', tokens: 280 },
+    { type: 'tool-result', icon: '📄', content: 'Applied edit to app.py (reduced from 85 to 24 lines)', tokens: 25 },
+    { type: 'raw-output', icon: '💬', content: 'I\'ve refactored the Flask app to use blueprints. Here\'s what changed:\n\n**New files created:**\n- `routes/__init__.py` — empty package init\n- `routes/auth.py` — Auth blueprint (`/api/auth/login`, `/api/auth/logout`)\n- `routes/api.py` — API blueprint (`/api/models` CRUD, `/api/predict`, `/api/train`)\n- `routes/pages.py` — Pages blueprint (`/`, `/dashboard`)\n\n**Modified:**\n- `app.py` — Now only contains app factory, config, db init, and blueprint registration. Reduced from 85 to 24 lines.\n\n**Architecture:**\n- Each blueprint is self-contained with its own routes\n- The `login_required` decorator is shared via `utils/auth.py`\n- `db` instance stays in `app.py` and is imported by blueprints\n- URL prefixes are set during registration, keeping blueprint routes clean', tokens: 380 },
+  ];
+
+  // Initialize summary state
+  blocks.forEach((b, i) => {
+    b.index = i;
+    b.summary = null; // null = not summarized, { text, tokens, status }
+  });
+
+  renderBlocks();
+  updateStats();
+  log('info', `Loaded sample conversation: ${blocks.length} blocks`);
+  stepIndex = 0;
+}
+
+// ============================================================================
+// Token estimation
+// ============================================================================
+
+function estimateTokens(text) {
+  if (!text) return 0;
+  return Math.ceil(text.length / 4);
+}
+
+// ============================================================================
+// Rendering
+// ============================================================================
+
+function renderBlocks() {
+  const list = document.getElementById('blockList');
+  const prevWindow = parseInt(document.getElementById('prevWindow').value);
+  const nextWindow = parseInt(document.getElementById('nextWindow').value);
+
+  // Compute window for selected block
+  let windowPrev = new Set();
+  let windowNext = new Set();
+  let firstUserIdx = blocks.findIndex(b => b.type === 'user');
+
+  if (selectedBlockIndex >= 0) {
+    for (let i = Math.max(0, selectedBlockIndex - prevWindow); i < selectedBlockIndex; i++) {
+      windowPrev.add(i);
+    }
+    for (let i = selectedBlockIndex + 1; i <= Math.min(blocks.length - 1, selectedBlockIndex + nextWindow); i++) {
+      windowNext.add(i);
+    }
+  }
+
+  list.innerHTML = blocks.map((block, i) => {
+    const isSelected = i === selectedBlockIndex;
+    const isPrev = windowPrev.has(i);
+    const isNext = windowNext.has(i);
+    const isFirstUser = i === firstUserIdx && selectedBlockIndex >= 0 && !windowPrev.has(firstUserIdx) && i !== selectedBlockIndex;
+    const isSummarizable = ['thinking', 'tool-result', 'raw-output'].includes(block.type) && block.tokens >= MIN_BLOCK_TOKENS;
+
+    let windowMarker = '';
+    if (isSelected) windowMarker = '<div class="window-marker target"></div>';
+    else if (isFirstUser) windowMarker = '<div class="window-marker first-user"></div>';
+    else if (isPrev) windowMarker = '<div class="window-marker prev"></div>';
+    else if (isNext) windowMarker = '<div class="window-marker next"></div>';
+
+    let summaryBadge = '';
+    if (block.summary) {
+      summaryBadge = `<div class="summary-badge ${block.summary.status}">${block.summary.status === 'complete' ? `✓ ${block.summary.tokens}t` : block.summary.status}</div>`;
+    }
+
+    const classes = [
+      'block-card',
+      block.type,
+      isSelected ? 'selected' : '',
+      (isPrev || isNext || isFirstUser) ? 'in-window' : '',
+    ].filter(Boolean).join(' ');
+
+    const displayText = block.summary?.status === 'complete'
+      ? `<span style="color: #818cf8; font-style: italic;">[Summary] ${block.summary.text.substring(0, 120)}${block.summary.text.length > 120 ? '...' : ''}</span>`
+      : block.content.substring(0, 150) + (block.content.length > 150 ? '...' : '');
+
+    return `
+      <div class="block-entry">
+        <div class="block-index">B[${i}]</div>
+        <div class="${classes}" onclick="selectBlock(${i})">
+          ${windowMarker}
+          ${summaryBadge}
+          <div class="block-header">
+            <span class="block-icon">${block.icon}</span>
+            <span class="block-type">${block.type}</span>
+            <span class="block-tokens">${block.summary?.status === 'complete' ? `${block.tokens}→${block.summary.tokens}` : `${block.tokens} tok`}</span>
+          </div>
+          <div class="block-text">${displayText}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectBlock(index) {
+  selectedBlockIndex = index;
+  renderBlocks();
+  showBlockDetails(index);
+  showPromptPreview(index);
+}
+
+function showBlockDetails(index) {
+  const block = blocks[index];
+  const isSummarizable = ['thinking', 'tool-result', 'raw-output'].includes(block.type) && block.tokens >= MIN_BLOCK_TOKENS;
+
+  let html = `
+    <div style="margin-bottom: 8px;">
+      <strong>B[${index}]</strong> — ${block.type} (${block.tokens} tokens)
+    </div>
+    <div style="margin-bottom: 8px; font-size: 11px;">
+      Summarizable: <span style="color: ${isSummarizable ? '#34d399' : '#f87171'};">${isSummarizable ? 'Yes' : 'No'}</span>
+      ${!isSummarizable && block.tokens < MIN_BLOCK_TOKENS ? ` (< ${MIN_BLOCK_TOKENS} tokens)` : ''}
+      ${block.type === 'user' ? ' (user messages are never summarized)' : ''}
+      ${block.type === 'tool-call' ? ' (tool calls kept verbatim)' : ''}
+    </div>
+  `;
+
+  if (block.summary?.status === 'complete') {
+    html += `
+      <div class="summary-text">${block.summary.text}</div>
+      <div class="summary-meta">
+        ${block.tokens} → ${block.summary.tokens} tokens (${Math.round((1 - block.summary.tokens / block.tokens) * 100)}% reduction)
+      </div>
+    `;
+  }
+
+  html += `
+    <div style="margin-top: 8px; font-size: 11px; color: #6b7280; max-height: 100px; overflow-y: auto;">
+      <strong>Raw content:</strong><br>${block.content.substring(0, 500)}${block.content.length > 500 ? '...' : ''}
+    </div>
+  `;
+
+  document.getElementById('blockDetails').innerHTML = html;
+}
+
+function showPromptPreview(index) {
+  const block = blocks[index];
+  const isSummarizable = ['thinking', 'tool-result', 'raw-output'].includes(block.type) && block.tokens >= MIN_BLOCK_TOKENS;
+
+  if (!isSummarizable) {
+    document.getElementById('promptPreview').innerHTML = '<span style="color: #6b7280;">This block is not summarizable.</span>';
+    return;
+  }
+
+  const prompt = buildPrompt(index);
+  document.getElementById('promptPreview').innerHTML = prompt.display;
+}
+
+// ============================================================================
+// Prompt building
+// ============================================================================
+
+function buildPrompt(targetIndex) {
+  const prevWindow = parseInt(document.getElementById('prevWindow').value);
+  const nextWindow = parseInt(document.getElementById('nextWindow').value);
+  const block = blocks[targetIndex];
+
+  // Find first user message
+  const firstUserIdx = blocks.findIndex(b => b.type === 'user');
+
+  // Previous blocks
+  const prevStart = Math.max(0, targetIndex - prevWindow);
+  const prevBlocks = blocks.slice(prevStart, targetIndex);
+
+  // Next blocks
+  const nextEnd = Math.min(blocks.length, targetIndex + nextWindow + 1);
+  const nextBlocks = blocks.slice(targetIndex + 1, nextEnd);
+
+  // Build display
+  let display = '';
+  let promptText = '';
+
+  // System prompt
+  const systemPrompt = 'You are a precise summarization assistant. Compress the TARGET block while preserving all key facts, decisions, and technical details. Write in 3rd person past tense. Be concise but complete.';
+  display += `<span class="prompt-label">[SYSTEM]</span>\n${systemPrompt}\n\n`;
+  display += `<span class="prompt-label">[USER]</span>\n\n`;
+  promptText += '';
+
+  // First user message (if not already in window)
+  if (firstUserIdx >= 0 && firstUserIdx < prevStart) {
+    display += `<span class="prompt-dim">--- FIRST USER MESSAGE ---</span>\n`;
+    display += `<span class="prompt-user-msg">${blocks[firstUserIdx].content}</span>\n\n`;
+    promptText += `--- FIRST USER MESSAGE ---\n${blocks[firstUserIdx].content}\n\n`;
+  }
+
+  // Previous context
+  display += `<span class="prompt-dim">--- PREVIOUS CONTEXT (${prevBlocks.length} blocks) ---</span>\n`;
+  promptText += `--- PREVIOUS CONTEXT (${prevBlocks.length} blocks) ---\n`;
+  for (const pb of prevBlocks) {
+    let text;
+    if (pb.summary?.status === 'complete') {
+      text = `[Summary] ${pb.summary.text}`;
+      display += `<span class="prompt-summary">${text}</span>\n`;
+    } else if (pb.type === 'user') {
+      text = `[User] ${pb.content}`;
+      display += `<span class="prompt-user-msg">${text}</span>\n`;
+    } else if (pb.type === 'tool-call') {
+      text = `[Tool Call] ${pb.content}`;
+      display += `${text}\n`;
+    } else {
+      const truncated = pb.content.substring(0, 2000);
+      text = `[${pb.type}] ${truncated}${pb.content.length > 2000 ? '...(truncated)' : ''}`;
+      display += `${text}\n`;
+    }
+    promptText += text + '\n';
+  }
+
+  // Target
+  display += `\n<span class="prompt-dim">--- TARGET BLOCK (summarize this) ---</span>\n`;
+  display += `<span class="prompt-target">${block.content}</span>\n`;
+  promptText += `\n--- TARGET BLOCK (summarize this) ---\n${block.content}\n`;
+
+  // Next context
+  if (nextBlocks.length > 0) {
+    display += `\n<span class="prompt-dim">--- NEXT CONTEXT (${nextBlocks.length} blocks) ---</span>\n`;
+    promptText += `\n--- NEXT CONTEXT (${nextBlocks.length} blocks) ---\n`;
+    for (const nb of nextBlocks) {
+      const truncated = nb.content.substring(0, 2000);
+      const text = `[${nb.type}] ${truncated}${nb.content.length > 2000 ? '...(truncated)' : ''}`;
+      display += `<span class="prompt-next">${text}</span>\n`;
+      promptText += text + '\n';
+    }
+  }
+
+  // Instruction
+  const targetWords = Math.round(block.tokens * 0.75 * 0.4); // 40% of original
+  display += `\n<span class="prompt-dim">Summarize the TARGET BLOCK in ~${targetWords} words. Preserve: decisions, actions, key technical details. Omit: hedging, obvious observations.</span>`;
+  display += `\n<span class="prompt-dim">/no_think</span>`;
+  promptText += `\nSummarize the TARGET BLOCK in ~${targetWords} words. Preserve: decisions, actions, key technical details. Omit: hedging, obvious observations.\n/no_think`;
+
+  return { display, systemPrompt, promptText };
+}
+
+// ============================================================================
+// Summarization
+// ============================================================================
+
+function getSummarizableBlocks() {
+  const nextWindow = parseInt(document.getElementById('nextWindow').value);
+  return blocks.map((b, i) => ({ block: b, index: i }))
+    .filter(({ block, index }) => {
+      if (!['thinking', 'tool-result', 'raw-output'].includes(block.type)) return false;
+      if (block.tokens < MIN_BLOCK_TOKENS) return false;
+      if (block.summary?.status === 'complete') return false;
+      // Must have enough next blocks (or be at end of conversation)
+      const availableNext = blocks.length - 1 - index;
+      return availableNext >= nextWindow || index >= blocks.length - 3; // last 3 get summarized with less lookahead
+    });
+}
+
+async function summarizeBlock(index) {
+  const block = blocks[index];
+  block.summary = { text: '', tokens: 0, status: 'in-progress' };
+  renderBlocks();
+
+  const { systemPrompt, promptText } = buildPrompt(index);
+
+  // Try real LLM call
+  const endpoint = document.getElementById('apiEndpoint').value;
+  const model = document.getElementById('modelName').value;
+  const apiKey = document.getElementById('apiKey').value;
+
+  try {
+    log('info', `Summarizing B[${index}] (${block.type}, ${block.tokens} tok)...`);
+
+    const response = await fetch(`${endpoint}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {}),
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: promptText },
+        ],
+        max_tokens: 1000,
+        temperature: 0.1,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`API error ${response.status}: ${err.substring(0, 200)}`);
+    }
+
+    const data = await response.json();
+    const summaryText = data.choices?.[0]?.message?.content?.trim() || '';
+
+    if (summaryText) {
+      block.summary = {
+        text: summaryText,
+        tokens: estimateTokens(summaryText),
+        status: 'complete',
+      };
+      log('success', `B[${index}] summarized: ${block.tokens} → ${block.summary.tokens} tok (${Math.round((1 - block.summary.tokens / block.tokens) * 100)}% reduction)`);
+    } else {
+      throw new Error('Empty response from LLM');
+    }
+  } catch (err) {
+    log('warn', `B[${index}] LLM call failed: ${err.message}. Using mock summary.`);
+    // Fallback: generate a mock summary
+    block.summary = {
+      text: generateMockSummary(block),
+      tokens: Math.round(block.tokens * 0.3),
+      status: 'complete',
+    };
+    log('info', `B[${index}] mock summary: ${block.tokens} → ${block.summary.tokens} tok`);
+  }
+
+  renderBlocks();
+  updateStats();
+  if (selectedBlockIndex === index) {
+    showBlockDetails(index);
+    showPromptPreview(index);
+  }
+}
+
+function generateMockSummary(block) {
+  const shortened = block.content.substring(0, 100);
+  if (block.type === 'thinking') return `Analyzed ${shortened}... and decided on approach.`;
+  if (block.type === 'tool-result') return `Result: ${shortened}... (${block.tokens} tokens compressed)`;
+  if (block.type === 'raw-output') return `Response summarized: ${shortened}...`;
+  return shortened;
+}
+
+async function runFullSummarization() {
+  if (isRunning) return;
+  isRunning = true;
+  document.getElementById('btnRunAll').disabled = true;
+  document.getElementById('btnStep').disabled = true;
+
+  const eligible = getSummarizableBlocks();
+  log('info', `Starting full summarization: ${eligible.length} eligible blocks`);
+
+  for (const { index } of eligible) {
+    if (!isRunning) break;
+    await summarizeBlock(index);
+    // Small delay between blocks for visual feedback
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  isRunning = false;
+  document.getElementById('btnRunAll').disabled = false;
+  document.getElementById('btnStep').disabled = false;
+  log('success', 'Full summarization complete!');
+  updateStats();
+}
+
+async function stepSummarize() {
+  const eligible = getSummarizableBlocks();
+  if (eligible.length === 0) {
+    log('warn', 'No more blocks to summarize');
+    return;
+  }
+
+  // Find the next unsummarized block
+  const next = eligible[0];
+  selectBlock(next.index);
+  await summarizeBlock(next.index);
+}
+
+function resetSummaries() {
+  blocks.forEach(b => b.summary = null);
+  stepIndex = 0;
+  renderBlocks();
+  updateStats();
+  log('info', 'All summaries reset');
+}
+
+// ============================================================================
+// Stats
+// ============================================================================
+
+function updateStats() {
+  const total = blocks.length;
+  const summarizable = blocks.filter(b => ['thinking', 'tool-result', 'raw-output'].includes(b.type) && b.tokens >= MIN_BLOCK_TOKENS).length;
+  const summarized = blocks.filter(b => b.summary?.status === 'complete').length;
+  const rawTokens = blocks.reduce((sum, b) => sum + b.tokens, 0);
+  const afterTokens = blocks.reduce((sum, b) => {
+    if (b.summary?.status === 'complete') return sum + b.summary.tokens;
+    return sum + b.tokens;
+  }, 0);
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statSummarizable').textContent = summarizable;
+  document.getElementById('statSummarized').textContent = `${summarized}/${summarizable}`;
+  document.getElementById('statRawTokens').textContent = rawTokens.toLocaleString();
+  document.getElementById('statAfterTokens').textContent = afterTokens.toLocaleString();
+  document.getElementById('statCompression').textContent = rawTokens > 0
+    ? `${Math.round((1 - afterTokens / rawTokens) * 100)}% reduction`
+    : '—';
+}
+
+// ============================================================================
+// Logging
+// ============================================================================
+
+function log(level, message) {
+  const logEl = document.getElementById('activityLog');
+  const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+  logEl.innerHTML += `<div class="log-entry ${level}">[${time}] ${message}</div>`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ============================================================================
+// Init
+// ============================================================================
+
+loadSampleConversation();
+</script>
+</body></html>

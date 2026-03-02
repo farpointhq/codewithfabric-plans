@@ -532,8 +532,13 @@ function buildPrompt(targetIndex) {
   let display = '';
   let promptText = '';
 
-  // System prompt
-  const systemPrompt = 'You are a precise summarization assistant. Compress the TARGET block while preserving all key facts, decisions, and technical details. Write in 3rd person past tense. Be concise but complete.';
+  // System prompt — block-type-aware
+  const typeInstructions = {
+    'thinking': 'You are summarizing an AI assistant\'s INTERNAL REASONING. Extract ONLY: (1) conclusions reached, (2) decisions made, (3) key facts identified, (4) the chosen approach. Discard the reasoning process itself, hedging, and self-talk. Use declarative statements.',
+    'tool-result': 'You are summarizing a TOOL RESULT (data returned by a tool call). Extract ONLY: (1) the essential data/facts returned, (2) key names, values, versions, and identifiers, (3) structural information (file count, error status, schema shape). Discard: raw file paths, formatting boilerplate, repeated patterns — just capture what matters for understanding the conversation later.',
+    'raw-output': 'You are summarizing the AI assistant\'s RESPONSE TO THE USER. Extract ONLY: (1) information communicated, (2) actions taken or recommended, (3) key technical details shared. Discard: preamble, hedging, transitions ("Here\'s...", "I\'ll..."), and formatting chrome.',
+  };
+  const systemPrompt = (typeInstructions[block.type] || 'You are a precise summarization assistant.') + ' Write in 3rd person past tense. Be concise but complete — every concrete fact, name, number, and identifier must survive.';
   display += `<span class="prompt-label">[SYSTEM]</span>\n${systemPrompt}\n\n`;
   display += `<span class="prompt-label">[USER]</span>\n\n`;
   promptText += '';
@@ -584,11 +589,17 @@ function buildPrompt(targetIndex) {
     }
   }
 
-  // Instruction
+  // Instruction — type-specific
   const targetWords = Math.round(block.tokens * 0.75 * 0.4); // 40% of original
-  display += `\n<span class="prompt-dim">Summarize the TARGET BLOCK in ~${targetWords} words. Preserve: decisions, actions, key technical details. Omit: hedging, obvious observations.</span>`;
+  const typeHints = {
+    'thinking': `Summarize the TARGET BLOCK in ~${targetWords} words. Output ONLY the conclusions and decisions — not the reasoning steps. Every concrete name, version, technology, and number must appear in your summary.`,
+    'tool-result': `Summarize the TARGET BLOCK in ~${targetWords} words. Capture ALL key data: names, versions, counts, identifiers, error/success status. Use compact notation (e.g. "React 18, MUI, Zustand" not full sentences).`,
+    'raw-output': `Summarize the TARGET BLOCK in ~${targetWords} words. Capture the key information delivered to the user. Preserve all technical specifics (names, versions, file paths, counts). Drop conversational framing.`,
+  };
+  const instruction = typeHints[block.type] || `Summarize the TARGET BLOCK in ~${targetWords} words.`;
+  display += `\n<span class="prompt-dim">${instruction}</span>`;
   display += `\n<span class="prompt-dim">/no_think</span>`;
-  promptText += `\nSummarize the TARGET BLOCK in ~${targetWords} words. Preserve: decisions, actions, key technical details. Omit: hedging, obvious observations.\n/no_think`;
+  promptText += `\n${instruction}\n/no_think`;
 
   return { display, systemPrompt, promptText };
 }
@@ -680,11 +691,40 @@ async function summarizeBlock(index) {
 }
 
 function generateMockSummary(block) {
-  const shortened = block.content.substring(0, 100);
-  if (block.type === 'thinking') return `Analyzed ${shortened}... and decided on approach.`;
-  if (block.type === 'tool-result') return `Result: ${shortened}... (${block.tokens} tokens compressed)`;
-  if (block.type === 'raw-output') return `Response summarized: ${shortened}...`;
-  return shortened;
+  // Extract meaningful content instead of blind truncation
+  const lines = block.content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+  if (block.type === 'thinking') {
+    // For thinking: grab lines that look like conclusions (contain ":", lists, decisions)
+    const keyLines = lines.filter(l =>
+      l.startsWith('-') || l.startsWith('*') || l.includes(':') || l.includes('→') ||
+      /\b(decided|concluded|plan|approach|need to|should|will|chose)\b/i.test(l)
+    );
+    const useful = keyLines.length > 0 ? keyLines : lines;
+    return useful.slice(0, 8).join('. ').substring(0, Math.round(block.content.length * 0.4)) + (useful.length > 8 ? '...' : '');
+  }
+
+  if (block.type === 'tool-result') {
+    // For tool results: try to extract key-value pairs and identifiers
+    const keyLines = lines.filter(l =>
+      l.startsWith('-') || l.startsWith('"') || l.includes('=') || l.includes(':') ||
+      /\d+\.\d+/.test(l) || /v\d+/.test(l)
+    );
+    const useful = keyLines.length > 0 ? keyLines : lines;
+    return useful.slice(0, 10).join('; ').substring(0, Math.round(block.content.length * 0.4));
+  }
+
+  if (block.type === 'raw-output') {
+    // For raw output: skip preamble lines, grab substantive content
+    const substantive = lines.filter(l =>
+      l.startsWith('-') || l.startsWith('*') || l.startsWith('#') ||
+      l.includes(':') || l.length > 30
+    );
+    const useful = substantive.length > 0 ? substantive : lines;
+    return useful.slice(0, 8).join('. ').substring(0, Math.round(block.content.length * 0.4));
+  }
+
+  return lines.slice(0, 5).join('. ').substring(0, Math.round(block.content.length * 0.4));
 }
 
 async function runFullSummarization() {

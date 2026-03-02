@@ -565,8 +565,7 @@ function buildPrompt(targetIndex) {
       text = `[Tool Call] ${pb.content}`;
       display += `${text}\n`;
     } else {
-      const truncated = pb.content.substring(0, 2000);
-      text = `[${pb.type}] ${truncated}${pb.content.length > 2000 ? '...(truncated)' : ''}`;
+      text = `[${pb.type}] ${pb.content}`;
       display += `${text}\n`;
     }
     promptText += text + '\n';
@@ -582,8 +581,7 @@ function buildPrompt(targetIndex) {
     display += `\n<span class="prompt-dim">--- NEXT CONTEXT (${nextBlocks.length} blocks) ---</span>\n`;
     promptText += `\n--- NEXT CONTEXT (${nextBlocks.length} blocks) ---\n`;
     for (const nb of nextBlocks) {
-      const truncated = nb.content.substring(0, 2000);
-      const text = `[${nb.type}] ${truncated}${nb.content.length > 2000 ? '...(truncated)' : ''}`;
+      const text = `[${nb.type}] ${nb.content}`;
       display += `<span class="prompt-next">${text}</span>\n`;
       promptText += text + '\n';
     }
@@ -672,14 +670,8 @@ async function summarizeBlock(index) {
       throw new Error('Empty response from LLM');
     }
   } catch (err) {
-    log('warn', `B[${index}] LLM call failed: ${err.message}. Using mock summary.`);
-    // Fallback: generate a mock summary
-    block.summary = {
-      text: generateMockSummary(block),
-      tokens: Math.round(block.tokens * 0.3),
-      status: 'complete',
-    };
-    log('info', `B[${index}] mock summary: ${block.tokens} → ${block.summary.tokens} tok`);
+    block.summary = { text: '', tokens: 0, status: 'failed' };
+    log('error', `B[${index}] FAILED: ${err.message}`);
   }
 
   renderBlocks();
@@ -688,43 +680,6 @@ async function summarizeBlock(index) {
     showBlockDetails(index);
     showPromptPreview(index);
   }
-}
-
-function generateMockSummary(block) {
-  // Extract meaningful content instead of blind truncation
-  const lines = block.content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-
-  if (block.type === 'thinking') {
-    // For thinking: grab lines that look like conclusions (contain ":", lists, decisions)
-    const keyLines = lines.filter(l =>
-      l.startsWith('-') || l.startsWith('*') || l.includes(':') || l.includes('→') ||
-      /\b(decided|concluded|plan|approach|need to|should|will|chose)\b/i.test(l)
-    );
-    const useful = keyLines.length > 0 ? keyLines : lines;
-    return useful.slice(0, 8).join('. ').substring(0, Math.round(block.content.length * 0.4)) + (useful.length > 8 ? '...' : '');
-  }
-
-  if (block.type === 'tool-result') {
-    // For tool results: try to extract key-value pairs and identifiers
-    const keyLines = lines.filter(l =>
-      l.startsWith('-') || l.startsWith('"') || l.includes('=') || l.includes(':') ||
-      /\d+\.\d+/.test(l) || /v\d+/.test(l)
-    );
-    const useful = keyLines.length > 0 ? keyLines : lines;
-    return useful.slice(0, 10).join('; ').substring(0, Math.round(block.content.length * 0.4));
-  }
-
-  if (block.type === 'raw-output') {
-    // For raw output: skip preamble lines, grab substantive content
-    const substantive = lines.filter(l =>
-      l.startsWith('-') || l.startsWith('*') || l.startsWith('#') ||
-      l.includes(':') || l.length > 30
-    );
-    const useful = substantive.length > 0 ? substantive : lines;
-    return useful.slice(0, 8).join('. ').substring(0, Math.round(block.content.length * 0.4));
-  }
-
-  return lines.slice(0, 5).join('. ').substring(0, Math.round(block.content.length * 0.4));
 }
 
 async function runFullSummarization() {

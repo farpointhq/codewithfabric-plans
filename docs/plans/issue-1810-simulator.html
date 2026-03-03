@@ -646,7 +646,7 @@ async function summarizeBlock(index) {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: promptText },
         ],
-        max_tokens: 1000,
+        max_tokens: 4000,
         temperature: 0.1,
       }),
     });
@@ -657,7 +657,11 @@ async function summarizeBlock(index) {
     }
 
     const data = await response.json();
-    const summaryText = data.choices?.[0]?.message?.content?.trim() || '';
+    const msg = data.choices?.[0]?.message;
+    // content may be null if model spent all tokens on reasoning — use reasoning_content as fallback
+    const summaryText = (msg?.content?.trim()) || '';
+    const reasoningText = (msg?.reasoning_content || msg?.provider_specific_fields?.reasoning_content || '').trim();
+    const usedTokens = data.usage?.completion_tokens || 0;
 
     if (summaryText) {
       block.summary = {
@@ -665,9 +669,14 @@ async function summarizeBlock(index) {
         tokens: estimateTokens(summaryText),
         status: 'complete',
       };
+      if (reasoningText) {
+        log('warn', `B[${index}] model used reasoning (${estimateTokens(reasoningText)} tok wasted). Disable thinking on this model.`);
+      }
       log('success', `B[${index}] summarized: ${block.tokens} → ${block.summary.tokens} tok (${Math.round((1 - block.summary.tokens / block.tokens) * 100)}% reduction)`);
+    } else if (reasoningText) {
+      throw new Error(`Model returned content:null — all ${usedTokens} output tokens consumed by reasoning. Disable thinking on this model.`);
     } else {
-      throw new Error('Empty response from LLM');
+      throw new Error('Empty response from LLM (no content, no reasoning)');
     }
   } catch (err) {
     block.summary = { text: '', tokens: 0, status: 'failed' };

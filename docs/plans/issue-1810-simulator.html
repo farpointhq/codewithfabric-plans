@@ -739,16 +739,17 @@ function buildToolResultDescriptor(block, index) {
   return descriptor;
 }
 
+const RAW_TAIL = 3; // keep last N blocks unsummarized for full-fidelity recent context
+
 function getSummarizableBlocks() {
-  const nextWindow = parseInt(document.getElementById('nextWindow').value);
   return blocks.map((b, i) => ({ block: b, index: i }))
     .filter(({ block, index }) => {
       if (!['thinking', 'tool-result', 'raw-output'].includes(block.type)) return false;
       if (block.tokens < MIN_BLOCK_TOKENS) return false;
       if (block.summary?.status === 'complete') return false;
-      // Must have enough next blocks (or be at end of conversation)
-      const availableNext = blocks.length - 1 - index;
-      return availableNext >= nextWindow || index >= blocks.length - 3; // last 3 get summarized with less lookahead
+      // Keep the last RAW_TAIL blocks intact — never summarize them
+      if (index >= blocks.length - RAW_TAIL) return false;
+      return true;
     });
 }
 

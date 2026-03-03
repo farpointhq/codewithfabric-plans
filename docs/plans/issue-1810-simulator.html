@@ -505,7 +505,21 @@ function showPromptPreview(index) {
   }
 
   const prompt = buildPrompt(index);
-  document.getElementById('promptPreview').innerHTML = prompt.display;
+  const usesCoD = block.type === 'raw-output' || block.type === 'thinking';
+  let html = prompt.display;
+
+  if (usesCoD) {
+    html += `\n\n<span class="prompt-label">— CHAIN OF DENSITY (rounds 2-${COD_ROUNDS}) —</span>\n`;
+    html += `<span class="prompt-dim">After round 1 produces an initial summary, each subsequent round receives:</span>\n\n`;
+    html += `<span class="prompt-dim">ORIGINAL CONTENT:</span>\n<span class="prompt-target">[full block content]</span>\n\n`;
+    html += `<span class="prompt-dim">CURRENT SUMMARY:</span>\n<span class="prompt-summary">[previous round's output]</span>\n\n`;
+    html += `<span class="prompt-dim">Step 1: Identify 1-3 informative entities from the ORIGINAL CONTENT that are MISSING from the CURRENT SUMMARY.</span>\n`;
+    html += `<span class="prompt-dim">Step 2: Write a new, denser summary of the SAME LENGTH that incorporates the missing entities.</span>\n`;
+    html += `<span class="prompt-dim">Use fusion, compression, and removal of uninformative phrases to make space.</span>\n`;
+    html += `<span class="prompt-dim">/no_think</span>`;
+  }
+
+  document.getElementById('promptPreview').innerHTML = html;
 }
 
 // ============================================================================
@@ -606,6 +620,47 @@ function buildPrompt(targetIndex) {
 // Summarization
 // ============================================================================
 
+// ============================================================================
+// Binary / garbage detection
+// ============================================================================
+
+function detectBinaryContent(content) {
+  if (!content || content.length < 20) return null;
+
+  // Check for known binary file signatures
+  const first100 = content.substring(0, 100);
+  if (first100.includes('\x89PNG') || first100.includes('�PNG')) return 'PNG image';
+  if (first100.includes('JFIF') || first100.includes('\xFF\xD8')) return 'JPEG image';
+  if (first100.includes('%PDF')) return 'PDF document';
+  if (first100.includes('GIF8')) return 'GIF image';
+  if (first100.includes('PK\x03\x04')) return 'ZIP archive';
+
+  // High ratio of non-printable / control characters = binary
+  let nonPrintable = 0;
+  const sample = content.substring(0, 500);
+  for (let i = 0; i < sample.length; i++) {
+    const code = sample.charCodeAt(i);
+    if (code < 32 && code !== 9 && code !== 10 && code !== 13) nonPrintable++;
+    if (code > 126 && code < 160) nonPrintable++;
+    // Unicode replacement character or null bytes
+    if (code === 0xFFFD || code === 0) nonPrintable++;
+  }
+  if (nonPrintable / sample.length > 0.15) return 'binary data';
+
+  return null;
+}
+
+function extractFilenameFromContext(index) {
+  // Look at the preceding tool-call block for a filename
+  for (let i = index - 1; i >= Math.max(0, index - 3); i--) {
+    if (blocks[i].type === 'tool-call') {
+      const match = blocks[i].content.match(/[\w.-]+\.(png|jpg|jpeg|gif|pdf|svg|ico|woff|ttf|wasm|zip|tar|gz)/i);
+      if (match) return match[0];
+    }
+  }
+  return null;
+}
+
 function getSummarizableBlocks() {
   const nextWindow = parseInt(document.getElementById('nextWindow').value);
   return blocks.map((b, i) => ({ block: b, index: i }))
@@ -672,14 +727,16 @@ async function summarizeBlockCoD(index) {
   const block = blocks[index];
   const { systemPrompt, promptText } = buildPrompt(index);
 
-  log('info', `B[${index}] CoD round 1/${COD_ROUNDS} — initial dense summary...`);
+  // Round 1: Initial summary
+  log('info', `B[${index}] CoD round 1/${COD_ROUNDS} — initial summary...`);
   let currentSummary = await callLLM(systemPrompt, promptText);
   log('info', `B[${index}] CoD round 1 done: ${estimateTokens(currentSummary)} tok`);
 
+  // Rounds 2+: Identify missing entities and fold them in (Chain of Density from the paper)
   for (let round = 2; round <= COD_ROUNDS; round++) {
-    const refinementPrompt = `Here is a summary of an AI assistant's response:\n\n${currentSummary}\n\nMake this summary MORE DENSE without losing any facts. Merge related points, remove filler words, use compact notation. Every name, version, number, and identifier from the original must survive. Do not add information not in the summary.\n/no_think`;
+    const refinementPrompt = `ORIGINAL CONTENT:\n${block.content}\n\nCURRENT SUMMARY:\n${currentSummary}\n\nStep 1: Identify 1-3 informative entities from the ORIGINAL CONTENT that are MISSING from the CURRENT SUMMARY. An entity is a specific name, version, number, technology, file path, decision, or technical detail.\n\nStep 2: Write a new, denser summary of the SAME LENGTH that incorporates the missing entities. Use fusion, compression, and removal of uninformative phrases to make space. The new summary should be:\n- Same length or shorter than the current summary\n- Contains every entity from the current summary PLUS the missing ones\n- Flows naturally, not a bullet list\n- Missing no concrete facts from the original\n\nMissing entities:\n/no_think`;
 
-    log('info', `B[${index}] CoD round ${round}/${COD_ROUNDS} — densifying...`);
+    log('info', `B[${index}] CoD round ${round}/${COD_ROUNDS} — finding missing entities...`);
     currentSummary = await callLLM(systemPrompt, refinementPrompt);
     log('info', `B[${index}] CoD round ${round} done: ${estimateTokens(currentSummary)} tok`);
   }
@@ -693,6 +750,23 @@ async function summarizeBlock(index) {
   renderBlocks();
 
   try {
+    // Binary detection — skip LLM entirely for garbage content
+    const binaryType = detectBinaryContent(block.content);
+    if (binaryType) {
+      const filename = extractFilenameFromContext(index) || 'unknown file';
+      const descriptor = `Binary ${binaryType}: ${filename} (${block.tokens.toLocaleString()} tokens of binary data, not readable as text)`;
+      block.summary = {
+        text: descriptor,
+        tokens: estimateTokens(descriptor),
+        status: 'complete',
+      };
+      log('success', `B[${index}] binary detected (${binaryType}) — skipped LLM: ${block.tokens} → ${block.summary.tokens} tok (${Math.round((1 - block.summary.tokens / block.tokens) * 100)}% reduction)`);
+      renderBlocks();
+      updateStats();
+      if (selectedBlockIndex === index) { showBlockDetails(index); showPromptPreview(index); }
+      return;
+    }
+
     log('info', `Summarizing B[${index}] (${block.type}, ${block.tokens} tok)...`);
 
     let summaryText;

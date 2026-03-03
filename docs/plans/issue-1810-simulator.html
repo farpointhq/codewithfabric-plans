@@ -619,65 +619,98 @@ function getSummarizableBlocks() {
     });
 }
 
+async function callLLM(systemPrompt, userContent) {
+  const endpoint = document.getElementById('apiEndpoint').value;
+  const model = document.getElementById('modelName').value;
+  const apiKey = document.getElementById('apiKey').value;
+
+  const response = await fetch(`${endpoint}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {}),
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userContent },
+      ],
+      max_tokens: 4000,
+      temperature: 0.1,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`API error ${response.status}: ${err.substring(0, 200)}`);
+  }
+
+  const data = await response.json();
+  const msg = data.choices?.[0]?.message;
+  const content = (msg?.content?.trim()) || '';
+  const reasoningText = (msg?.reasoning_content || msg?.provider_specific_fields?.reasoning_content || '').trim();
+  const usedTokens = data.usage?.completion_tokens || 0;
+
+  if (reasoningText) {
+    log('warn', `Model used reasoning (${estimateTokens(reasoningText)} tok wasted). Disable thinking on this model.`);
+  }
+
+  if (!content) {
+    if (reasoningText) {
+      throw new Error(`content:null — all ${usedTokens} tokens consumed by reasoning. Disable thinking on this model.`);
+    }
+    throw new Error('Empty response from LLM');
+  }
+
+  return content;
+}
+
+const COD_ROUNDS = 3;
+
+async function summarizeBlockCoD(index) {
+  const block = blocks[index];
+  const { systemPrompt, promptText } = buildPrompt(index);
+
+  log('info', `B[${index}] CoD round 1/${COD_ROUNDS} — initial dense summary...`);
+  let currentSummary = await callLLM(systemPrompt, promptText);
+  log('info', `B[${index}] CoD round 1 done: ${estimateTokens(currentSummary)} tok`);
+
+  for (let round = 2; round <= COD_ROUNDS; round++) {
+    const refinementPrompt = `Here is a summary of an AI assistant's response:\n\n${currentSummary}\n\nMake this summary MORE DENSE without losing any facts. Merge related points, remove filler words, use compact notation. Every name, version, number, and identifier from the original must survive. Do not add information not in the summary.\n/no_think`;
+
+    log('info', `B[${index}] CoD round ${round}/${COD_ROUNDS} — densifying...`);
+    currentSummary = await callLLM(systemPrompt, refinementPrompt);
+    log('info', `B[${index}] CoD round ${round} done: ${estimateTokens(currentSummary)} tok`);
+  }
+
+  return currentSummary;
+}
+
 async function summarizeBlock(index) {
   const block = blocks[index];
   block.summary = { text: '', tokens: 0, status: 'in-progress' };
   renderBlocks();
 
-  const { systemPrompt, promptText } = buildPrompt(index);
-
-  // Try real LLM call
-  const endpoint = document.getElementById('apiEndpoint').value;
-  const model = document.getElementById('modelName').value;
-  const apiKey = document.getElementById('apiKey').value;
-
   try {
     log('info', `Summarizing B[${index}] (${block.type}, ${block.tokens} tok)...`);
 
-    const response = await fetch(`${endpoint}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {}),
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: promptText },
-        ],
-        max_tokens: 4000,
-        temperature: 0.1,
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`API error ${response.status}: ${err.substring(0, 200)}`);
-    }
-
-    const data = await response.json();
-    const msg = data.choices?.[0]?.message;
-    // content may be null if model spent all tokens on reasoning — use reasoning_content as fallback
-    const summaryText = (msg?.content?.trim()) || '';
-    const reasoningText = (msg?.reasoning_content || msg?.provider_specific_fields?.reasoning_content || '').trim();
-    const usedTokens = data.usage?.completion_tokens || 0;
-
-    if (summaryText) {
-      block.summary = {
-        text: summaryText,
-        tokens: estimateTokens(summaryText),
-        status: 'complete',
-      };
-      if (reasoningText) {
-        log('warn', `B[${index}] model used reasoning (${estimateTokens(reasoningText)} tok wasted). Disable thinking on this model.`);
-      }
-      log('success', `B[${index}] summarized: ${block.tokens} → ${block.summary.tokens} tok (${Math.round((1 - block.summary.tokens / block.tokens) * 100)}% reduction)`);
-    } else if (reasoningText) {
-      throw new Error(`Model returned content:null — all ${usedTokens} output tokens consumed by reasoning. Disable thinking on this model.`);
+    let summaryText;
+    if (block.type === 'raw-output' || block.type === 'thinking') {
+      // Chain of Density for raw output + reasoning — iterative refinement
+      summaryText = await summarizeBlockCoD(index);
     } else {
-      throw new Error('Empty response from LLM (no content, no reasoning)');
+      // Single-pass for tool-result
+      const { systemPrompt, promptText } = buildPrompt(index);
+      summaryText = await callLLM(systemPrompt, promptText);
     }
+
+    block.summary = {
+      text: summaryText,
+      tokens: estimateTokens(summaryText),
+      status: 'complete',
+    };
+    log('success', `B[${index}] summarized: ${block.tokens} → ${block.summary.tokens} tok (${Math.round((1 - block.summary.tokens / block.tokens) * 100)}% reduction)${block.type === 'raw-output' ? ' [CoD]' : ''}`);
   } catch (err) {
     block.summary = { text: '', tokens: 0, status: 'failed' };
     log('error', `B[${index}] FAILED: ${err.message}`);

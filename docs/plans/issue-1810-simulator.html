@@ -504,6 +504,12 @@ function showPromptPreview(index) {
     return;
   }
 
+  if (block.type === 'tool-result') {
+    const descriptor = buildToolResultDescriptor(block, index);
+    document.getElementById('promptPreview').innerHTML = `<span class="prompt-label">[NO LLM CALL — INSTANT DESCRIPTOR]</span>\n\n<span style="color: #34d399;">Subsequent thinking/output blocks already captured the important information from this tool result. Replace with a retrieval breadcrumb:\n\n</span><span class="prompt-target">${escapeHtml(descriptor)}</span>\n\n<span class="prompt-dim">Cost: 0 tokens, 0ms latency</span>`;
+    return;
+  }
+
   const prompt = buildPrompt(index);
   const usesCoD = block.type === 'raw-output' || block.type === 'thinking';
   let html = prompt.display;
@@ -666,6 +672,73 @@ function extractFilenameFromContext(index) {
   return null;
 }
 
+// ============================================================================
+// Tool result → instant descriptor (no LLM call)
+// ============================================================================
+
+function findPrecedingToolCall(index) {
+  // Walk back to find the matching tool-call for this tool-result
+  for (let i = index - 1; i >= Math.max(0, index - 5); i--) {
+    if (blocks[i].type === 'tool-call') return blocks[i];
+    // Stop if we hit a user message or another result — call chain broken
+    if (blocks[i].type === 'user') break;
+  }
+  return null;
+}
+
+function buildToolResultDescriptor(block, index) {
+  const toolCall = findPrecedingToolCall(index);
+  const toolName = block.toolName || toolCall?.toolName || 'unknown';
+  const content = block.content;
+
+  // Extract the tool call args for the breadcrumb
+  let args = '';
+  if (toolCall) {
+    // Parse "ToolName(args...)" from tool-call content
+    const match = toolCall.content.match(/^\w+\((.+)\)$/s);
+    args = match ? match[1] : toolCall.content;
+    if (args.length > 150) args = args.substring(0, 150) + '...';
+  }
+
+  // Detect content shape for a useful descriptor
+  let shape = '';
+
+  // JSON object/array detection
+  const trimmed = content.trim();
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed.files && Array.isArray(parsed.files)) {
+        shape = `returned ${parsed.files.length} file paths`;
+      } else if (parsed.exitCode !== undefined) {
+        shape = `exit code ${parsed.exitCode}`;
+        if (parsed.stdout) {
+          const preview = parsed.stdout.trim().substring(0, 120);
+          shape += `: ${preview}${parsed.stdout.length > 120 ? '...' : ''}`;
+        }
+      } else if (Array.isArray(parsed)) {
+        shape = `returned array of ${parsed.length} items`;
+      } else {
+        const keys = Object.keys(parsed);
+        shape = `returned object with keys: ${keys.slice(0, 8).join(', ')}${keys.length > 8 ? ` (+${keys.length - 8} more)` : ''}`;
+      }
+    } catch {
+      // Not valid JSON — use text preview
+      shape = content.substring(0, 150).replace(/\n/g, ' ').trim();
+      if (content.length > 150) shape += '...';
+    }
+  } else {
+    // Plain text result — line count + preview
+    const lines = content.split('\n');
+    const preview = content.substring(0, 150).replace(/\n/g, ' ').trim();
+    shape = `${lines.length} lines: ${preview}${content.length > 150 ? '...' : ''}`;
+  }
+
+  // Build the descriptor with retrieval breadcrumb
+  const descriptor = `${toolName}(${args}) → ${shape} [${block.tokens.toLocaleString()} tok]`;
+  return descriptor;
+}
+
 function getSummarizableBlocks() {
   const nextWindow = parseInt(document.getElementById('nextWindow').value);
   return blocks.map((b, i) => ({ block: b, index: i }))
@@ -776,26 +849,32 @@ async function summarizeBlock(index) {
       return;
     }
 
-    log('info', `Summarizing B[${index}] (${block.type}, ${block.tokens} tok)...`);
-
-    let summaryText;
-    if (block.type === 'raw-output' || block.type === 'thinking') {
-      // Chain of Density for raw output + reasoning — iterative refinement
-      summaryText = await summarizeBlockCoD(index);
-    } else {
-      // Single-pass for tool-result — cap at 50% of input
-      const { systemPrompt, promptText } = buildPrompt(index);
-      const maxTokens = Math.max(100, Math.round(block.tokens * 0.5));
-      log('info', `B[${index}] max output capped at ${maxTokens} tok (50% of ${block.tokens})`);
-      summaryText = await callLLM(systemPrompt, promptText, maxTokens);
+    // Tool results → instant descriptor (no LLM call)
+    // The reasoning/output blocks that follow already capture the important info.
+    if (block.type === 'tool-result') {
+      const descriptor = buildToolResultDescriptor(block, index);
+      block.summary = {
+        text: descriptor,
+        tokens: estimateTokens(descriptor),
+        status: 'complete',
+      };
+      log('success', `B[${index}] tool-result → descriptor (no LLM): ${block.tokens} → ${block.summary.tokens} tok (${Math.round((1 - block.summary.tokens / block.tokens) * 100)}% reduction)`);
+      renderBlocks();
+      updateStats();
+      if (selectedBlockIndex === index) { showBlockDetails(index); showPromptPreview(index); }
+      return;
     }
+
+    // Thinking + raw-output → Chain of Density (3 rounds)
+    log('info', `Summarizing B[${index}] (${block.type}, ${block.tokens} tok) [CoD]...`);
+    const summaryText = await summarizeBlockCoD(index);
 
     block.summary = {
       text: summaryText,
       tokens: estimateTokens(summaryText),
       status: 'complete',
     };
-    log('success', `B[${index}] summarized: ${block.tokens} → ${block.summary.tokens} tok (${Math.round((1 - block.summary.tokens / block.tokens) * 100)}% reduction)${block.type === 'raw-output' ? ' [CoD]' : ''}`);
+    log('success', `B[${index}] summarized [CoD]: ${block.tokens} → ${block.summary.tokens} tok (${Math.round((1 - block.summary.tokens / block.tokens) * 100)}% reduction)`);
   } catch (err) {
     block.summary = { text: '', tokens: 0, status: 'failed' };
     log('error', `B[${index}] FAILED: ${err.message}`);

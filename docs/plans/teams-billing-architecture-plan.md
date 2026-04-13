@@ -164,19 +164,97 @@ if (!team.isUnlimited || !team.unlimitedCurrentPeriodEnd || team.unlimitedCurren
 |---|--------|------|------|----------|
 | 1 | Fix monsurate `billing.ts` to mirror canonical pattern | `monsurate.com` | Low | Mena, Ryan, all Unlimited users on monsurate **tonight** |
 | 2 | Copy `findUserTeamId` + `hasActiveSubscription` helpers into `monsurate.com/src/lib/team-helpers.ts` | `monsurate.com` | Low | Prevents future drift |
-| 3 | Auto-create empty team on signup (event + backfill) | `codewithfabric` | Low-medium | Vision invariant #1 |
-| 4 | "Inviting requires Unlimited" guard | `codewithfabric` | Low | Vision invariant #3 |
-| 5 | Verify & document team-pool per-member cap enforcement at request time | `codewithfabric` + LiteLLM | Unknown | Vision invariant #5 (full behavior) |
-| 6 | Shared `@fabric/team-helpers` workspace package | Both | Medium | Eliminates copy-paste from step 2 |
+| 3 | Auto-create empty team on signup (event + backfill) | `codewithfabric` | Low-medium | D1, vision invariant "everyone has a team" |
+| 4 | "Inviting requires Unlimited" guard | `codewithfabric` | Low | D4, no grandfathering |
+| 5 | Sender-aware context banner on `/dashboard/billing` + `?sender=` redirect from monsurate | `codewithfabric` + `monsurate.com` | Low | D5, eliminates the "why am I on codewithfabric?" surprise |
+| 6 | Add `Team.ownerMonthlyLimitCents` / `ownerCurrentMonthSpendCents` / `ownerBudgetResetAt` (schema only, no enforcement yet) | `codewithfabric` | Low | D3, unblocks owner-cap UI whenever we build it |
+| 7 | Verify & document team-pool per-member cap enforcement at request time (Gap #5) | `codewithfabric` + LiteLLM | Unknown | Full behavior per D2 step 3 |
+| 8 | Shared `@fabric/team-helpers` workspace package | Both | Medium | Eliminates copy-paste from step 2 |
 
-Steps 1–2 are tonight. Step 3 is a small PR. Step 4 is a one-line guard. Step 5 needs investigation first. Step 6 is a future refactor we can defer indefinitely — the literal copy from step 2 is *fine* as long as we keep the two functions small and well-commented.
+Steps 1–2 are tonight. Steps 3/4/5/6 are small PRs, each can be a separate issue. Step 7 needs investigation first. Step 8 is a future refactor we can defer indefinitely — the literal copy from step 2 is *fine* as long as we keep the two functions small and well-commented.
 
-## Open questions for Ryan
+## Decisions (answered 2026-04-13)
 
-1. **Signup-time team creation — do we include a default `TeamMember` row for the owner?** Current convention says no (owner is synthesized as a virtual OWNER entry). Ryan's vision is consistent with that — "the owner is not automatically a member, but they're the owner". Keep the convention.
-2. **Should the owner's personal `User.balanceCents` ever be drawn for their *own* usage when they also have a team?** My read: yes, as a last-resort after team Unlimited and team pool, since the owner is "just another user" from a metering standpoint. Confirm.
-3. **"Unlimited required to invite" — do we grandfather existing teams that currently have members but no Unlimited?** Unlikely to be any (you already filtered the Unlimited teams list and the owner-only pattern is universal), but worth a check before landing gap #4.
-4. **monsurate's credit-purchase UX** — when a *monsurate-only* user (no Fabric link) runs out of credits, do we (a) bounce them to `codewithfabric.com/dashboard/billing`, (b) build a purchase flow inside monsurate using the existing PayPal routes from codewithfabric, or (c) do nothing and assume every monsurate user is a Fabric user too? Current code does (a). Your original verbal flow suggested (b). This is a product question, not a code question.
+### D1. Owner is not a TeamMember (convention preserved)
+
+**Decision:** Keep the current convention. The team owner is recorded via `Team.ownerId`, *not* as a `TeamMember` row. `TeamMember` and "team owner" are distinct concepts.
+
+**Implication for "is everyone a team member?":** No. A user who owns their own empty team is the owner of it and is not a member of anything. A user can simultaneously (a) own Team A, (b) be a member of Team B (via `TeamMember`). That's exactly how the downline hierarchy works today (`OWNS_TEAM_WITH_MEMBERS` migration sets their team's `parentTeamId` to the new team, and they join the new team as a member).
+
+### D2. Terminology — "team Unlimited" means "owner bought Unlimited for the whole team"
+
+There is no organizational "Team Unlimited" distinct from Unlimited-the-product. What we call `Team.isUnlimited` means: **the owner paid for an Unlimited plan that covers every member of this team, including themselves.**
+
+**Authoritative per-request resolution order:**
+
+```
+For a member of a team:
+  1. member.isUnlimited && !expired      → member's own personal Unlimited
+  2. team.isUnlimited   && !expired      → owner-bought team Unlimited covers them
+  3. team.balanceCents > 0 && month-cap  → draw team pool (per-member monthlyLimitCents)
+  4. user.balanceCents  > 0              → personal wallet, LAST RESORT
+  5. else                                → 402 insufficient_credits
+
+For the team owner (no TeamMember row, so step 1 reads user-level fields):
+  1. user-level personal Unlimited if they separately bought one  (unusual)
+  2. team.isUnlimited && !expired        → they're covered — they bought it
+  3. team.balanceCents > 0 && owner cap  → draw team pool (see D3)
+  4. user.balanceCents  > 0              → personal wallet, LAST RESORT
+  5. else                                → 402
+```
+
+This matches what `hasActiveSubscription` does today for steps 1/2/4, plus the schema-ready-but-unenforced step 3 (Gap #5).
+
+### D3. Where does the owner's self-imposed cap on the team pool live?
+
+Ryan's vision: "even the owner can set their own limit on the team balance, optionally". Since the owner is deliberately *not* a `TeamMember` row, `TeamMember.monthlyLimitCents` doesn't apply to them.
+
+**Proposed schema addition (small, additive):**
+
+```prisma
+model Team {
+  // ... existing ...
+  ownerMonthlyLimitCents      Int?
+  ownerCurrentMonthSpendCents Int       @default(0)
+  ownerBudgetResetAt          DateTime?
+}
+```
+
+Mirrors the `TeamMember` budget trio one-to-one but scoped to the owner. All nullable/defaulted, so no migration pain for existing teams. The enforcement path is the same as Gap #5 (deferred until we know how the LiteLLM proxy hooks into request metering).
+
+### D4. No grandfathering needed for the "Unlimited required to invite" guard
+
+Existing teams with members are effectively a subset of Unlimited teams (you verified this anecdotally — go.team, Regs, etc. all have Unlimited). We can land Gap #4 as a hard 402 on invitation creation without grandfathering. If a non-Unlimited team with members is ever found later, we'll handle it as a one-off.
+
+### D5. monsurate credit purchase UX → stay bounced, but sender-aware billing page
+
+**Decision:** Keep the current "bounce to `codewithfabric.com/dashboard/billing`" flow (option A from the original question), but add a **sender-aware context banner** on the billing page to eliminate the "wait, why am I on codewithfabric?" confusion.
+
+**Proposed mechanism:**
+
+1. monsurate.com's "insufficient credits" redirect appends `?sender=monsurate.com` (similarly `?sender=allyoucanclaw.com` when that comes online).
+2. The codewithfabric billing page reads the `sender` query param (validated against an allow-list of known sibling domains) and, **only when a valid sender is present**, renders a compact context banner at the top:
+
+    > *"You arrived here from **monsurate.com**. monsurate.com, allyoucanclaw.com, and codewithfabric.com share one account — buying credits here unlocks Fabric across all of them."*
+
+3. Direct visitors to `/dashboard/billing` (no `sender` param or sender not in allow-list) see **nothing** about the sibling sites. A pure codewithfabric user never learns about monsurate or allyoucanclaw.
+
+**Scope:** small. One query param on monsurate's redirect, one `sender` allow-list constant in codewithfabric, one conditionally-rendered banner component. No copy changes elsewhere.
+
+**Open sub-question:** do we want the banner to be dismissible + remembered (cookie), or always-show when the sender param is present? My read: always-show, because users may arrive from different senders at different times, and the banner is only shown when the `sender` is present anyway.
+
+### D6. Open follow-up on the TeamMember design
+
+Ryan asked: *"Is team owner a type of team member? Is everyone a team member? And only one in a team can be the owner. But then a team member can also be a team owner of another team — how is that handled right now?"*
+
+**Answer to the "how is that handled" part, from reading the code:**
+
+- A user is in exactly one of three positional states per team: **owner of it**, **member of it**, or **neither**.
+- A user can own Team A and be a member of Team B at the same time. `User.ownedTeams[]` and `User.teamMembers[]` are both collections.
+- The downline case ("member brought their own team") is *not* that the same user becomes both owner-of-A and member-of-A. It's that the user keeps owning A while joining B, and A is reparented under B via `A.parentTeamId = B.id`. Their identity as A's owner is unaffected; they just additionally hold a `TeamMember` row pointing at B.
+- So "can be a member and also own a different team" is fully supported, and "can be a member *and* owner of the same team" is structurally impossible (there's no `TeamMember` row for owners of a team by design).
+
+Given D1 preserves this, nothing else needs to change.
 
 ## Not in this plan
 

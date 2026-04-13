@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../stylesheets/extra.css">
+<style>
+body { margin: 0; padding: 24px; background: #0f0f0f; }
+.diagram-title { font-size: 18px; font-weight: 700; color: #e5e5e5; margin-bottom: 20px; text-align: center; }
+.diagram-row { display: flex; gap: 16px; align-items: stretch; }
+.diagram-col { flex: 1; }
+
+/* Horizontal flow */
+.flow-container { display: flex; align-items: flex-start; gap: 12px; }
+.flow-lane { flex: 1; min-width: 200px; }
+.flow-lane-title { font-size: 11px; font-weight: 600; letter-spacing: 1px; margin-bottom: 12px; text-align: center; padding: 6px 12px; border-radius: 4px; }
+.flow-lane-title.caller { background: #1e3a5f; color: #93c5fd; }
+.flow-lane-title.server { background: #312e81; color: #a5b4fc; }
+.flow-lane-title.email { background: #14532d; color: #86efac; }
+.flow-lane-title.invitee { background: #78350f; color: #fbbf24; }
+
+/* Step cards */
+.step-card { background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-bottom: 10px; font-size: 13px; color: #d1d5db; }
+.step-card .label { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 6px; }
+.step-card .label.post { color: #60a5fa; }
+.step-card .label.get { color: #34d399; }
+.step-card .label.check { color: #fbbf24; }
+.step-card .label.action { color: #c084fc; }
+.step-card code { background: rgba(0,0,0,0.4); padding: 1px 5px; border-radius: 3px; font-size: 11px; font-family: monospace; color: #e5e5e5; }
+
+/* Arrow */
+.arrow-down { text-align: center; color: #4338ca; font-size: 18px; margin: 4px 0; }
+.arrow-right { color: #4338ca; font-size: 14px; padding: 0 4px; align-self: center; }
+
+/* Section divider */
+.section-divider { border-top: 1px dashed #333; margin: 20px 0 16px; padding-top: 12px; }
+.section-title { font-size: 13px; font-weight: 600; color: #9ca3af; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<div class="diagram" style="max-width: 900px;">
+  <div class="diagram-title">Team Invite Flow</div>
+
+  <!-- SEND INVITE -->
+  <div class="section-title">Phase 1: Send Invite</div>
+  <div class="diagram-box main">
+    <div class="diagram-box-title">POST /api/team/invite</div>
+    <div class="diagram-steps">
+      <div class="diagram-step">
+        <span class="diagram-step-num">1</span>
+        <span class="diagram-step-text">Auth + <code class="diagram-step-code">getTeamContext()</code> → verify OWNER or ADMIN</span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-num">2</span>
+        <span class="diagram-step-text">Validate email, normalize to lowercase</span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-num">3</span>
+        <span class="diagram-step-text">Anti-hijacking check: invitee not in ancestor team</span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-num">4</span>
+        <span class="diagram-step-text">Check for duplicate pending invite to same email</span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-num">5</span>
+        <span class="diagram-step-text">Create <code class="diagram-step-code">TeamInvitation</code> (7-day expiry, secure token)</span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-num">6</span>
+        <span class="diagram-step-text">Send invite email via Resend</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- ACCEPT INVITE -->
+  <div class="section-title">Phase 2: Accept Invite</div>
+  <div class="diagram-box renderer">
+    <div class="diagram-box-title">POST /api/team/invitations/[token]/accept</div>
+    <div class="diagram-steps">
+      <div class="diagram-step">
+        <span class="diagram-step-num">1</span>
+        <span class="diagram-step-text">Auth required — user must be signed in</span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-num">2</span>
+        <span class="diagram-step-text">Validate token: PENDING, not expired, email matches session user</span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-num">3</span>
+        <span class="diagram-step-text">Determine invitee state (5 scenarios)</span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-num">4</span>
+        <span class="diagram-step-text">Execute migration in <code class="diagram-step-code">prisma.$transaction</code></span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-num">5</span>
+        <span class="diagram-step-text">Generate API key via LiteLLM if user has none</span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-num">6</span>
+        <span class="diagram-step-text">Mark invitation ACCEPTED, notify team owner</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- SUPPORTING ROUTES -->
+  <div class="section-title">Supporting Routes</div>
+  <div class="diagram-row">
+    <div class="diagram-col">
+      <div class="step-card">
+        <div class="label get">GET /api/team/invitations</div>
+        Auto-expire past-due invitations, return list with email, role, status, dates
+      </div>
+    </div>
+    <div class="diagram-col">
+      <div class="step-card">
+        <div class="label post">POST /api/team/invitations/[token]/revoke</div>
+        OWNER or ADMIN only. Validate token belongs to team. Set status → REVOKED
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

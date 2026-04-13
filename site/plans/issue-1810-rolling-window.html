@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 24px; background: #0a0a0a; font-family: 'Inter', -apple-system, sans-serif; }
+  .diagram { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 28px; color: #e5e5e5; max-width: 1100px; }
+  .title { font-size: 18px; font-weight: 700; color: #a5b4fc; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #9ca3af; margin-bottom: 24px; line-height: 1.5; }
+
+  .section-title { font-size: 14px; font-weight: 600; color: #fbbf24; margin: 24px 0 12px; }
+
+  .block-row { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+  .block-idx { font-size: 10px; color: #6b7280; width: 32px; text-align: right; font-family: monospace; flex-shrink: 0; }
+  .block { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 5px; font-size: 11px; border: 1px solid; flex: 1; min-height: 24px; position: relative; }
+  .block.user { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; }
+  .block.thinking { background: #2d1a3e; border-color: #a855f7; color: #d8b4fe; }
+  .block.tool-call { background: #1a3a2a; border-color: #22c55e; color: #86efac; }
+  .block.tool-result { background: #162b1f; border-color: #059669; color: #6ee7b7; }
+  .block.raw-output { background: #1f2937; border-color: #6b7280; color: #d1d5db; }
+  .block.summarized { background: #1e1b4b; border-color: #6366f1; color: #a5b4fc; font-style: italic; }
+  .block-icon { font-size: 12px; flex-shrink: 0; }
+  .block-text { font-size: 11px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .block-tokens { font-size: 9px; opacity: 0.5; font-family: monospace; flex-shrink: 0; }
+
+  /* Window indicators */
+  .window-tag { font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: 600; letter-spacing: 0.5px; flex-shrink: 0; margin-left: auto; }
+  .window-tag.context-prev { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
+  .window-tag.target { background: rgba(251, 191, 36, 0.25); color: #fbbf24; }
+  .window-tag.context-next { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+  .window-tag.first-user { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+  .window-tag.skip { background: rgba(107, 114, 128, 0.2); color: #9ca3af; }
+
+  /* Bracket for window */
+  .window-bracket { border-left: 3px solid; padding-left: 8px; margin: 4px 0 4px 40px; }
+  .window-bracket.prev { border-color: #6366f1; }
+  .window-bracket.target { border-color: #fbbf24; }
+  .window-bracket.next { border-color: #22c55e; }
+
+  .bracket-label { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .bracket-label.prev { color: #818cf8; }
+  .bracket-label.target { color: #fbbf24; }
+  .bracket-label.next { color: #4ade80; }
+
+  .annotation { font-size: 11px; color: #fbbf24; margin: 12px 0; padding: 8px 12px; background: rgba(251, 191, 36, 0.08); border-left: 3px solid #fbbf24; border-radius: 0 4px 4px 0; line-height: 1.6; }
+
+  .note { font-size: 11px; color: #9ca3af; margin: 8px 0; padding: 8px 12px; background: rgba(107, 114, 128, 0.08); border-left: 3px solid #4b5563; border-radius: 0 4px 4px 0; line-height: 1.5; }
+</style>
+</head><body>
+<div class="diagram">
+  <div class="title">Rolling Window: 5 Previous + 2 Next</div>
+  <div class="subtitle">To summarize block B[n], we build a context window: the 5 blocks before it, the target block itself, and the 2 blocks after it. User messages and tool calls are context-only (never summarized). Already-summarized blocks use their compressed form.</div>
+
+  <div class="section-title">Example: Summarizing B[9] (thinking block)</div>
+
+  <!-- First user message (always included) -->
+  <div class="block-row">
+    <div class="block-idx">B[0]</div>
+    <div class="block user">
+      <span class="block-icon">👤</span>
+      <span class="block-text">Read config.json and requirements.txt. Explain them briefly.</span>
+      <span class="window-tag first-user">FIRST USER MSG</span>
+    </div>
+  </div>
+
+  <div style="margin: 2px 0 2px 40px; font-size: 10px; color: #4b5563;">⋮ B[1]–B[3] omitted (outside window)</div>
+
+  <!-- Window: Previous 5 -->
+  <div class="window-bracket prev">
+    <div class="bracket-label prev">PREVIOUS 5 BLOCKS (context)</div>
+
+    <div class="block-row">
+      <div class="block-idx">B[4]</div>
+      <div class="block tool-call">
+        <span class="block-icon">🔧</span>
+        <span class="block-text">Read(requirements.txt)</span>
+        <span class="block-tokens">15 tok</span>
+        <span class="window-tag context-prev">PREV-5</span>
+      </div>
+    </div>
+
+    <div class="block-row">
+      <div class="block-idx">B[5]</div>
+      <div class="block summarized">
+        <span class="block-icon">📦</span>
+        <span class="block-text">Python deps: Flask 2.3, requests, numpy, pandas + 12 others for ML pipeline</span>
+        <span class="block-tokens">28→18 tok</span>
+        <span class="window-tag context-prev">PREV-4 (summarized)</span>
+      </div>
+    </div>
+
+    <div class="block-row">
+      <div class="block-idx">B[6]</div>
+      <div class="block summarized">
+        <span class="block-icon">📦</span>
+        <span class="block-text">Identified config.json as npm config and requirements.txt as Python ML deps</span>
+        <span class="block-tokens">250→22 tok</span>
+        <span class="window-tag context-prev">PREV-3 (summarized)</span>
+      </div>
+    </div>
+
+    <div class="block-row">
+      <div class="block-idx">B[7]</div>
+      <div class="block summarized">
+        <span class="block-icon">📦</span>
+        <span class="block-text">Explained: config.json = Node.js app v2.1.0 w/ React; requirements.txt = Flask ML backend</span>
+        <span class="block-tokens">220→30 tok</span>
+        <span class="window-tag context-prev">PREV-2 (summarized)</span>
+      </div>
+    </div>
+
+    <div class="block-row">
+      <div class="block-idx">B[8]</div>
+      <div class="block user">
+        <span class="block-icon">👤</span>
+        <span class="block-text">Now refactor the Flask app to use blueprints.</span>
+        <span class="block-tokens">12 tok</span>
+        <span class="window-tag context-prev">PREV-1</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Target -->
+  <div class="window-bracket target">
+    <div class="bracket-label target">TARGET BLOCK (to summarize)</div>
+    <div class="block-row">
+      <div class="block-idx">B[9]</div>
+      <div class="block thinking" style="border-width: 2px; box-shadow: 0 0 12px rgba(251, 191, 36, 0.2);">
+        <span class="block-icon">💭</span>
+        <span class="block-text">The user wants to refactor app.py to use Flask blueprints. I need to read the current app structure first, understand the route layout, then create separate blueprint modules for API routes, page routes, and error handlers...</span>
+        <span class="block-tokens">300 tok</span>
+        <span class="window-tag target">TARGET</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Window: Next 2 -->
+  <div class="window-bracket next">
+    <div class="bracket-label next">NEXT 2 BLOCKS (context)</div>
+
+    <div class="block-row">
+      <div class="block-idx">B[10]</div>
+      <div class="block tool-call">
+        <span class="block-icon">🔧</span>
+        <span class="block-text">Read(app.py)</span>
+        <span class="block-tokens">12 tok</span>
+        <span class="window-tag context-next">NEXT-1</span>
+      </div>
+    </div>
+
+    <div class="block-row">
+      <div class="block-idx">B[11]</div>
+      <div class="block tool-result">
+        <span class="block-icon">📄</span>
+        <span class="block-text">from flask import Flask, render_template... (1,800 tokens of raw content)</span>
+        <span class="block-tokens">1800 tok</span>
+        <span class="window-tag context-next">NEXT-2</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="annotation">
+    <strong>Key insight:</strong> B[5], B[6], B[7] were already summarized from an earlier pass. We use their <em>compressed summaries</em> as context (28+22+30 = 80 tokens), not the raw content (520+250+220 = 990 tokens). This is a <strong>12x context compression</strong> for those blocks.
+  </div>
+
+  <div class="note">
+    <strong>Rules:</strong><br>
+    • User messages (B[0], B[8]) are included verbatim as context — never summarized<br>
+    • Tool calls (B[4], B[10]) are included verbatim — they're small and important for understanding what was done<br>
+    • Already-summarized blocks use their summary text, not raw content<br>
+    • First user message (B[0]) is always included, even if outside the 5-block window<br>
+    • Bias: 5 previous (heavier history) + 2 next (lighter lookahead)
+  </div>
+
+  <div class="section-title" style="margin-top: 28px;">Window Size Comparison</div>
+  <div style="display: flex; gap: 12px; margin-top: 12px;">
+    <div style="flex: 1; background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 14px;">
+      <div style="font-size: 11px; font-weight: 600; color: #f87171; margin-bottom: 8px;">1 PREV + 0 NEXT (current)</div>
+      <div style="font-size: 12px; color: #d1d5db; line-height: 1.5;">
+        Only sees the immediately preceding block.<br>
+        <span style="color: #f87171;">Misses: conversation goal, tool results, reasoning chain.</span><br>
+        Summaries are context-poor and lose the thread.
+      </div>
+    </div>
+    <div style="flex: 1; background: #1e1b4b; border: 1px solid #4338ca; border-radius: 8px; padding: 14px;">
+      <div style="font-size: 11px; font-weight: 600; color: #34d399; margin-bottom: 8px;">5 PREV + 2 NEXT (proposed)</div>
+      <div style="font-size: 12px; color: #d1d5db; line-height: 1.5;">
+        Sees the full chain of reasoning.<br>
+        <span style="color: #34d399;">Previous summaries compress older context (telescoping).</span><br>
+        Lookahead adds what the block leads to.
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

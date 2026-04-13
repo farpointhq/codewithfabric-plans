@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 24px; background: #0a0a0a; font-family: 'Inter', -apple-system, sans-serif; }
+  .diagram { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 28px; color: #e5e5e5; max-width: 1100px; }
+  .title { font-size: 18px; font-weight: 700; color: #a5b4fc; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #9ca3af; margin-bottom: 24px; line-height: 1.5; }
+  .section { margin-bottom: 24px; }
+  .section-title { font-size: 14px; font-weight: 600; color: #fbbf24; margin-bottom: 12px; }
+
+  .prompt-box { background: #0d1117; border: 1px solid #21262d; border-radius: 8px; padding: 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; }
+  .prompt-section { margin-bottom: 12px; }
+  .prompt-label { color: #7c3aed; font-weight: 600; }
+  .prompt-content { color: #c9d1d9; }
+  .prompt-summary { color: #818cf8; font-style: italic; }
+  .prompt-target { color: #fbbf24; background: rgba(251, 191, 36, 0.1); padding: 2px 4px; border-radius: 3px; }
+  .prompt-next { color: #4ade80; }
+  .prompt-user { color: #60a5fa; }
+  .prompt-instruction { color: #f87171; font-weight: 600; }
+  .prompt-dim { color: #6b7280; }
+
+  .flow-row { display: flex; align-items: stretch; gap: 12px; margin: 16px 0; }
+  .flow-box { flex: 1; background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 14px; }
+  .flow-box-title { font-size: 11px; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .flow-box-text { font-size: 12px; color: #d1d5db; line-height: 1.5; }
+  .flow-arrow { display: flex; align-items: center; font-size: 20px; color: #4338ca; }
+
+  .token-bar { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+  .token-label { font-size: 11px; color: #9ca3af; width: 120px; }
+  .token-fill { height: 18px; border-radius: 4px; display: flex; align-items: center; padding: 0 8px; font-size: 10px; font-weight: 600; }
+  .token-fill.raw { background: #dc2626; color: white; }
+  .token-fill.compressed { background: #059669; color: white; }
+</style>
+</head><body>
+<div class="diagram">
+  <div class="title">Context Assembly: What the LLM Sees</div>
+  <div class="subtitle">When summarizing a block, we assemble a prompt from the rolling window. This shows the exact prompt structure sent to fabric-small.</div>
+
+  <div class="section">
+    <div class="section-title">Prompt for Summarizing B[9] (thinking block, 300 tokens)</div>
+    <div class="prompt-box">
+      <div class="prompt-section">
+        <span class="prompt-label">[SYSTEM]</span><br>
+        <span class="prompt-content">You are a precise summarization assistant. Compress the TARGET block while preserving all key facts, decisions, and technical details. Write in 3rd person past tense.</span>
+      </div>
+
+      <div class="prompt-section">
+        <span class="prompt-label">[USER]</span><br><br>
+
+        <span class="prompt-dim">--- FIRST USER MESSAGE ---</span><br>
+        <span class="prompt-user">Read the config.json and requirements.txt files. Explain them briefly.</span><br><br>
+
+        <span class="prompt-dim">--- PREVIOUS CONTEXT (5 blocks) ---</span><br>
+        <span class="prompt-content">[Tool Call] Read(requirements.txt)</span><br>
+        <span class="prompt-summary">[Summary] Python deps: Flask 2.3, requests, numpy, pandas + 12 others for ML pipeline</span><br>
+        <span class="prompt-summary">[Summary] Identified config.json as npm config and requirements.txt as Python ML deps</span><br>
+        <span class="prompt-summary">[Summary] Explained: config.json = Node.js app v2.1.0 w/ React; requirements.txt = Flask ML backend</span><br>
+        <span class="prompt-user">[User] Now refactor the Flask app to use blueprints.</span><br><br>
+
+        <span class="prompt-dim">--- TARGET BLOCK (summarize this) ---</span><br>
+        <span class="prompt-target">The user wants to refactor app.py to use Flask blueprints. I need to read the current app structure first, understand the route layout, then create separate blueprint modules for API routes, page routes, and error handlers. The routes in app.py are currently all in one file with about 15 endpoints. I'll need to: 1) Create a routes/ directory, 2) Move API routes to routes/api.py as a Blueprint, 3) Move page routes to routes/pages.py, 4) Update app.py to register blueprints...</span><br><br>
+
+        <span class="prompt-dim">--- NEXT CONTEXT (2 blocks) ---</span><br>
+        <span class="prompt-next">[Tool Call] Read(app.py)</span><br>
+        <span class="prompt-next">[Tool Result] from flask import Flask, render_template... (1,800 tok truncated to 500)</span><br><br>
+
+        <span class="prompt-instruction">Summarize the TARGET BLOCK in ~225 words. Preserve: decisions made, actions planned, key technical details. Omit: hedging language, obvious observations.</span><br>
+        <span class="prompt-dim">/no_think</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Token Budget for Context Assembly</div>
+
+    <div class="token-bar">
+      <div class="token-label">First user msg</div>
+      <div class="token-fill compressed" style="width: 40px;">25</div>
+    </div>
+    <div class="token-bar">
+      <div class="token-label">Prev 5 (raw)</div>
+      <div class="token-fill raw" style="width: 280px;">1,317 tokens</div>
+    </div>
+    <div class="token-bar">
+      <div class="token-label">Prev 5 (summarized)</div>
+      <div class="token-fill compressed" style="width: 60px;">97 tokens</div>
+    </div>
+    <div class="token-bar">
+      <div class="token-label">Target block</div>
+      <div class="token-fill" style="width: 100px; background: #d97706; color: white;">300 tokens</div>
+    </div>
+    <div class="token-bar">
+      <div class="token-label">Next 2 (truncated)</div>
+      <div class="token-fill compressed" style="width: 160px;">~512 tokens (capped)</div>
+    </div>
+
+    <div style="margin-top: 12px; font-size: 12px; color: #9ca3af;">
+      <strong>Total prompt size:</strong> ~934 tokens (vs 2,154 with raw context) — <span style="color: #34d399;">57% smaller</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Context Assembly Rules</div>
+    <div class="flow-row">
+      <div class="flow-box">
+        <div class="flow-box-title" style="color: #60a5fa;">1. FIRST USER MESSAGE</div>
+        <div class="flow-box-text">
+          Always include verbatim.<br>
+          Sets the conversation intent.<br>
+          <span style="color: #6b7280;">Skip if already in the 5-block window.</span>
+        </div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">
+        <div class="flow-box-title" style="color: #818cf8;">2. PREVIOUS 5 BLOCKS</div>
+        <div class="flow-box-text">
+          Use summaries if available.<br>
+          User msgs & tool calls: verbatim.<br>
+          Tool results: summary or truncate to 500 tok.
+        </div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">
+        <div class="flow-box-title" style="color: #fbbf24;">3. TARGET BLOCK</div>
+        <div class="flow-box-text">
+          Include in full.<br>
+          This is what gets summarized.<br>
+          Never truncate the target.
+        </div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">
+        <div class="flow-box-title" style="color: #4ade80;">4. NEXT 2 BLOCKS</div>
+        <div class="flow-box-text">
+          Truncate each to 500 tok max.<br>
+          Shows what the block leads to.<br>
+          <span style="color: #6b7280;">May have 0-2 blocks available.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

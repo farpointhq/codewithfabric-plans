@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 32px; background: #0a0a0a; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: #e5e5e5; }
+  .page { max-width: 1480px; margin: 0 auto; }
+  .title { font-size: 20px; font-weight: 800; color: #f3f4f6; margin-bottom: 4px; }
+  .sub { font-size: 13px; color: #9ca3af; margin-bottom: 24px; }
+  .sub code { background: #1f2937; padding: 2px 6px; border-radius: 3px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #a5b4fc; }
+
+  .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+
+  .state { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; }
+  .state-name { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: #a5b4fc; margin-bottom: 4px; letter-spacing: 0.3px; }
+  .state-when { font-size: 10px; color: #6b7280; margin-bottom: 12px; line-height: 1.4; }
+  .state-actions { font-size: 11px; color: #c9d1d9; line-height: 1.55; border-top: 1px solid #1f2937; padding-top: 10px; }
+  .state-actions strong { color: #fbbf24; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px; font-weight: 700; }
+
+  .pill { display: inline-block; font-size: 9px; padding: 1px 6px; border-radius: 999px; font-weight: 700; letter-spacing: 0.3px; margin-right: 4px; }
+  .pill-self  { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+  .pill-owner { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+  .pill-hier  { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+  .pill-del   { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+  .legend { display: flex; gap: 16px; margin-top: 20px; padding: 14px 20px; background: #0d1117; border: 1px solid #21262d; border-radius: 10px; font-size: 11px; color: #9ca3af; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .arrow { color: #4338ca; margin: 0 4px; }
+
+  .footer { margin-top: 16px; font-size: 11px; color: #6b7280; font-style: italic; line-height: 1.6; }
+  .footer code { background: #1f2937; padding: 1px 5px; border-radius: 3px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #a5b4fc; font-style: normal; }
+</style>
+</head><body>
+<div class="page">
+  <div class="title">Invitation Acceptance — 5-State Migration (already built)</div>
+  <div class="sub">Source: <code>src/lib/team-invite.ts::executeTeamMigration</code>. Runs in a single <code>prisma.$transaction</code>. <code>checkAntiHijacking</code> prevents circular hierarchies.</div>
+
+  <div class="grid">
+    <div class="state">
+      <div class="state-name">NO_TEAM</div>
+      <div class="state-when">Invitee has no owned team and no existing membership. Most common path for fresh signups.</div>
+      <div class="state-actions">
+        <strong>Action</strong>
+        <span class="pill pill-owner">TEAM_OWNER</span> add TeamMember row with <code>billingProvider: TEAM_OWNER</code>.
+      </div>
+    </div>
+
+    <div class="state">
+      <div class="state-name">OWNS_EMPTY_NO_SUB</div>
+      <div class="state-when">Invitee owns a team but it has no members and no active subscription. (Will be the default state for every user once gap #3 ships.)</div>
+      <div class="state-actions">
+        <strong>Action</strong>
+        <span class="pill pill-del">DELETE</span> their empty team,
+        <span class="pill pill-owner">TEAM_OWNER</span> add as member of new team.
+      </div>
+    </div>
+
+    <div class="state">
+      <div class="state-name">OWNS_EMPTY_WITH_SUB</div>
+      <div class="state-when">Invitee owns an empty team that has its own active billing (they paid for themselves).</div>
+      <div class="state-actions">
+        <strong>Action</strong>
+        Keep their team,
+        <span class="pill pill-self">SELF</span> add to new team with <code>billingProvider: SELF</code>.
+      </div>
+    </div>
+
+    <div class="state">
+      <div class="state-name">OWNS_TEAM_WITH_MEMBERS</div>
+      <div class="state-when">Invitee owns a real team with members — this is the "downline" case Ryan described.</div>
+      <div class="state-actions">
+        <strong>Action</strong>
+        <span class="pill pill-hier">HIERARCHY</span> set their team's <code>parentTeamId</code> to the new team,
+        <span class="pill pill-owner">TEAM_OWNER</span> add as member.
+      </div>
+    </div>
+
+    <div class="state">
+      <div class="state-name">MEMBER_OF_OTHER</div>
+      <div class="state-when">Invitee is already a member of some other team (not owner).</div>
+      <div class="state-actions">
+        <strong>Action</strong>
+        <span class="pill pill-del">LEAVE</span> old TeamMember row,
+        <span class="pill pill-owner">TEAM_OWNER</span> add as member of new team.
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="pill pill-self">SELF</span>member pays own billing</div>
+    <div class="legend-item"><span class="pill pill-owner">TEAM_OWNER</span>team owner pays for this member</div>
+    <div class="legend-item"><span class="pill pill-hier">HIERARCHY</span>invitee's team becomes a sub-team (downline)</div>
+    <div class="legend-item"><span class="pill pill-del">DELETE / LEAVE</span>prior team state is removed</div>
+  </div>
+
+  <div class="footer">
+    All 5 states are already handled on <code>main</code> with anti-hijacking protection and a hard depth limit (<code>MAX_HIERARCHY_DEPTH</code>). No schema or migration-logic changes are needed from Ryan's vision — only a guard at the invite-creation site (<code>api/team/invitations/route.ts</code>) to enforce the "inviter must have Unlimited" rule, which is Gap #4.
+  </div>
+</div>
+</body></html>

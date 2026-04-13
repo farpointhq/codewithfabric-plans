@@ -1,0 +1,89 @@
+<link rel="stylesheet" href="../stylesheets/extra.css">
+<div class="diagram">
+  <div class="diagram-title" style="font-size:16px;font-weight:700;margin-bottom:20px;color:#a5b4fc;">LiteLLM Callback — Budget Enforcement Flow</div>
+
+  <div class="diagram-box main">
+    <div class="diagram-box-title">INCOMING USAGE EVENT</div>
+    <div class="diagram-steps">
+      <div class="diagram-step">
+        <span class="diagram-step-num">1</span>
+        <span class="diagram-step-text">Parse payload: <code class="diagram-step-code">userId</code>, <code class="diagram-step-code">model</code>, <code class="diagram-step-code">costCents</code></span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-num">2</span>
+        <span class="diagram-step-text">Create <code class="diagram-step-code">Usage</code> record + update <code class="diagram-step-code">DailyUsageSummary</code></span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-num">3</span>
+        <span class="diagram-step-text">Find user's <code class="diagram-step-code">TeamMember</code> record</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="diagram-ipc">
+    <div class="diagram-ipc-inner">
+      <div class="diagram-ipc-line"></div>
+      <div class="diagram-ipc-label">Member found?</div>
+      <div class="diagram-ipc-arrow"></div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:16px;">
+    <div class="diagram-box renderer" style="flex:1;">
+      <div class="diagram-box-title">YES — MEMBER BUDGET TRACKING</div>
+      <div class="diagram-steps">
+        <div class="diagram-step">
+          <span class="diagram-step-num">4</span>
+          <span class="diagram-step-text">Check <code class="diagram-step-code">budgetResetAt</code> — reset if past due</span>
+        </div>
+        <div class="diagram-connector"></div>
+        <div class="diagram-step">
+          <span class="diagram-step-num">5</span>
+          <span class="diagram-step-text">Check <code class="diagram-step-code">monthlyLimitCents</code> vs <code class="diagram-step-code">currentMonthSpendCents</code></span>
+        </div>
+        <div class="diagram-connector"></div>
+        <div class="diagram-step">
+          <span class="diagram-step-num">6</span>
+          <span class="diagram-step-text">Atomic increment <code class="diagram-step-code">currentMonthSpendCents += costCents</code></span>
+        </div>
+        <div class="diagram-connector"></div>
+        <div class="diagram-step">
+          <span class="diagram-step-num">7</span>
+          <span class="diagram-step-text">Log warning if over limit</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+      <div style="background:#1f2937;border:1px solid #374151;border-radius:8px;padding:16px;text-align:center;">
+        <div style="font-size:11px;font-weight:600;color:#9ca3af;letter-spacing:1px;margin-bottom:8px;">NO — TEAM OWNER</div>
+        <div style="font-size:13px;color:#e5e5e5;">Skip member tracking<br>Only team balance decrement</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="diagram-ipc">
+    <div class="diagram-ipc-inner">
+      <div class="diagram-ipc-line"></div>
+      <div class="diagram-ipc-label">Both paths continue</div>
+      <div class="diagram-ipc-arrow"></div>
+    </div>
+  </div>
+
+  <div class="diagram-box main">
+    <div class="diagram-box-title">TEAM BALANCE DECREMENT (EXISTING)</div>
+    <div class="diagram-steps">
+      <div class="diagram-step">
+        <span class="diagram-step-num">8</span>
+        <span class="diagram-step-text">Check <code class="diagram-step-code">shouldDecrementBalance(model, team.isUnlimited)</code></span>
+      </div>
+      <div class="diagram-connector"></div>
+      <div class="diagram-step">
+        <span class="diagram-step-num">9</span>
+        <span class="diagram-step-text">If true → <code class="diagram-step-code">team.balanceCents -= costCents</code></span>
+      </div>
+    </div>
+  </div>
+</div>

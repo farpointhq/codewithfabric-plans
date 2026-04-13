@@ -1,0 +1,56 @@
+<link rel="stylesheet" href="../stylesheets/extra.css">
+<div class="diagram" style="max-width:800px">
+  <div class="diagram-title" style="font-size:16px;font-weight:700;text-align:center;margin-bottom:20px;color:#a5b4fc">Billing Provider Change Flow</div>
+  <div style="display:flex;gap:16px">
+    <!-- SELF → TEAM_OWNER -->
+    <div class="diagram-box renderer" style="flex:1">
+      <div class="diagram-box-title">SELF → TEAM_OWNER</div>
+      <div class="diagram-steps">
+        <div class="diagram-step">
+          <span class="diagram-step-num">1</span>
+          <span class="diagram-step-text">Owner initiates takeover</span>
+        </div>
+        <div class="diagram-connector"></div>
+        <div class="diagram-step">
+          <span class="diagram-step-num">2</span>
+          <span class="diagram-step-text">Cancel member's self-paid <code class="diagram-step-code">stripeSubscriptionId</code></span>
+        </div>
+        <div class="diagram-connector"></div>
+        <div class="diagram-step">
+          <span class="diagram-step-num">3</span>
+          <span class="diagram-step-text">Create new sub on owner's Stripe customer</span>
+        </div>
+        <div class="diagram-connector"></div>
+        <div class="diagram-step">
+          <span class="diagram-step-num">4</span>
+          <span class="diagram-step-text">Update TeamMember: billingProvider, subscriptionId</span>
+        </div>
+      </div>
+    </div>
+    <!-- TEAM_OWNER → SELF -->
+    <div class="diagram-box main" style="flex:1">
+      <div class="diagram-box-title">TEAM_OWNER → SELF</div>
+      <div class="diagram-steps">
+        <div class="diagram-step">
+          <span class="diagram-step-num">1</span>
+          <span class="diagram-step-text">Owner releases billing</span>
+        </div>
+        <div class="diagram-connector"></div>
+        <div class="diagram-step">
+          <span class="diagram-step-num">2</span>
+          <span class="diagram-step-text">Cancel owner-paid <code class="diagram-step-code">stripeSubscriptionId</code></span>
+        </div>
+        <div class="diagram-connector"></div>
+        <div class="diagram-step">
+          <span class="diagram-step-num">3</span>
+          <span class="diagram-step-text">Clear TeamMember subscription fields</span>
+        </div>
+        <div class="diagram-connector"></div>
+        <div class="diagram-step">
+          <span class="diagram-step-num">4</span>
+          <span class="diagram-step-text">Member must purchase own sub</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

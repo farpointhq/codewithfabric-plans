@@ -67,3 +67,4 @@ nav:
   - "Issue #66 \u2013 Member CRUD & Per-Seat Purchasing": plans/issue-66-plan.md
   - "Issue #67 \u2013 Hierarchical Teams & Property Inheritance": plans/issue-67-plan.md
   - "Issue #1810 \u2013 Block-Level Eager Summarization": plans/issue-1810-plan.md
+  - Teams & Billing Architecture: plans/teams-billing-architecture-plan.md

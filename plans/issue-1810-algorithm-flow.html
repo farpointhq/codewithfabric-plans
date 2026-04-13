@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 24px; background: #0a0a0a; font-family: 'Inter', -apple-system, sans-serif; }
+  .diagram { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 28px; color: #e5e5e5; max-width: 1100px; }
+  .title { font-size: 18px; font-weight: 700; color: #a5b4fc; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #9ca3af; margin-bottom: 24px; }
+
+  .phase { margin-bottom: 28px; }
+  .phase-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .phase-num { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+  .phase-num.p1 { background: #4338ca; color: white; }
+  .phase-num.p2 { background: #7c3aed; color: white; }
+  .phase-num.p3 { background: #059669; color: white; }
+  .phase-num.p4 { background: #d97706; color: white; }
+  .phase-num.p5 { background: #dc2626; color: white; }
+  .phase-title { font-size: 14px; font-weight: 600; color: #e5e5e5; }
+  .phase-trigger { font-size: 11px; color: #9ca3af; font-style: italic; }
+
+  .step-box { background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 14px; margin: 8px 0 8px 38px; }
+  .step-text { font-size: 12px; color: #d1d5db; line-height: 1.6; }
+  .step-code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; color: #a5b4fc; }
+  .step-highlight { color: #fbbf24; font-weight: 600; }
+
+  .decision { display: flex; gap: 12px; margin: 8px 0 8px 38px; }
+  .decision-box { flex: 1; border-radius: 8px; padding: 12px; }
+  .decision-yes { background: rgba(16, 185, 129, 0.1); border: 1px solid #059669; }
+  .decision-no { background: rgba(239, 68, 68, 0.1); border: 1px solid #dc2626; }
+  .decision-title { font-size: 11px; font-weight: 600; margin-bottom: 4px; }
+  .decision-yes .decision-title { color: #34d399; }
+  .decision-no .decision-title { color: #f87171; }
+  .decision-text { font-size: 11px; color: #d1d5db; }
+
+  .connector { width: 2px; height: 16px; background: #4b5563; margin: 0 0 0 50px; }
+  .connector-arrow { color: #4b5563; font-size: 14px; margin: 0 0 0 46px; }
+
+  .timing-box { background: #0d1117; border: 1px solid #21262d; border-radius: 8px; padding: 16px; margin-top: 20px; }
+  .timing-title { font-size: 13px; font-weight: 600; color: #a5b4fc; margin-bottom: 10px; }
+  .timing-row { display: flex; align-items: center; gap: 12px; margin: 6px 0; }
+  .timing-event { font-size: 11px; color: #d1d5db; width: 200px; }
+  .timing-bar { height: 20px; border-radius: 4px; display: flex; align-items: center; padding: 0 8px; font-size: 10px; font-weight: 600; color: white; }
+</style>
+</head><body>
+<div class="diagram">
+  <div class="title">Summarization Algorithm Flow</div>
+  <div class="subtitle">When a new block is finalized, walk backwards to find blocks that now have enough lookahead context to be summarized.</div>
+
+  <!-- Phase 1 -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-num p1">1</div>
+      <div class="phase-title">Trigger: New Block Finalized</div>
+      <div class="phase-trigger">— fires after each tool result, raw output, or thinking block completes</div>
+    </div>
+    <div class="step-box">
+      <div class="step-text">
+        When the <span class="step-code">loop-orchestrator</span> finalizes a block (tool result arrives, thinking completes, raw output finishes), it calls <span class="step-code">EagerSummarizationService.onBlockFinalized(blockIndex)</span>.<br><br>
+        This is the <span class="step-highlight">only trigger</span> — no timers, no polling, no message-level hooks.
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"></div>
+  <div class="connector-arrow">↓</div>
+
+  <!-- Phase 2 -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-num p2">2</div>
+      <div class="phase-title">Walk Back: Find Summarizable Blocks</div>
+      <div class="phase-trigger">— check B[n-2] and earlier that now have 2+ next blocks</div>
+    </div>
+    <div class="step-box">
+      <div class="step-text">
+        Starting from <span class="step-code">blockIndex - 2</span>, walk backwards through the flat block sequence:<br>
+        For each block B[i], check:
+      </div>
+    </div>
+    <div class="decision">
+      <div class="decision-box decision-yes">
+        <div class="decision-title">SUMMARIZE if:</div>
+        <div class="decision-text">
+          • Block type is thinking, tool_result, or raw_output<br>
+          • Block has ≥ MIN_BLOCK_TOKENS (100)<br>
+          • Block not already summarized (status ≠ "complete")<br>
+          • Block has ≥ 2 next blocks available OR is end of response
+        </div>
+      </div>
+      <div class="decision-box decision-no">
+        <div class="decision-title">SKIP if:</div>
+        <div class="decision-text">
+          • Block is a user message (never summarized)<br>
+          • Block is a tool_call (too small, keep verbatim)<br>
+          • Block is already summarized<br>
+          • Block is &lt; 100 tokens (not worth the LLM call)
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"></div>
+  <div class="connector-arrow">↓</div>
+
+  <!-- Phase 3 -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-num p3">3</div>
+      <div class="phase-title">Build Context Window</div>
+      <div class="phase-trigger">— assemble the prompt for each block to summarize</div>
+    </div>
+    <div class="step-box">
+      <div class="step-text">
+        For each block B[i] to summarize:<br><br>
+        <span class="step-highlight">a)</span> <strong>First user message</strong> — always include (unless it's in the 5-block window)<br>
+        <span class="step-highlight">b)</span> <strong>Previous 5 blocks</strong> B[i-5]…B[i-1]:<br>
+        &nbsp;&nbsp;• Use <em>summary text</em> if block already summarized<br>
+        &nbsp;&nbsp;• User messages and tool calls: verbatim<br>
+        &nbsp;&nbsp;• Unsummarized tool results: truncate to 500 tokens<br>
+        <span class="step-highlight">c)</span> <strong>Target block</strong> B[i]: full raw content<br>
+        <span class="step-highlight">d)</span> <strong>Next 2 blocks</strong> B[i+1]…B[i+2]: truncate each to 500 tokens
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"></div>
+  <div class="connector-arrow">↓</div>
+
+  <!-- Phase 4 -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-num p4">4</div>
+      <div class="phase-title">Summarize via fabric-small</div>
+      <div class="phase-trigger">— single-pass LLM call with /no_think</div>
+    </div>
+    <div class="step-box">
+      <div class="step-text">
+        <span class="step-highlight">Single-pass for all block types</span> — no Chain of Density (CoD hangs on fabric-small).<br><br>
+        • System prompt: role + target word count<br>
+        • User prompt: assembled context + target + instruction<br>
+        • Append <span class="step-code">/no_think</span> to disable Qwen thinking<br>
+        • Set <span class="step-code">reasoning_effort: "off"</span><br>
+        • 45s timeout per block<br><br>
+        All eligible blocks in a batch fire in parallel (up to 15 concurrent).
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"></div>
+  <div class="connector-arrow">↓</div>
+
+  <!-- Phase 5 -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-num p5">5</div>
+      <div class="phase-title">Persist Immediately</div>
+      <div class="phase-trigger">— each block saved as soon as its summary arrives</div>
+    </div>
+    <div class="step-box">
+      <div class="step-text">
+        Each block's summary is persisted to <span class="step-code">messageData.blockSummaries[blockId]</span> immediately — no batch waiting.<br><br>
+        The <span class="step-code">prompt-builder</span> swaps these summaries for raw content when context utilization reaches 60%.
+      </div>
+    </div>
+  </div>
+
+  <!-- Timing diagram -->
+  <div class="timing-box">
+    <div class="timing-title">Timing: When Each Block Gets Summarized</div>
+    <div style="font-size: 11px; color: #9ca3af; margin-bottom: 12px;">
+      Blocks are summarized as soon as they have 2 next blocks of lookahead context. This means summarization happens ~2 blocks behind the conversation head.
+    </div>
+
+    <div class="timing-row">
+      <div class="timing-event">B[3] tool_result (520 tok)</div>
+      <div class="timing-bar" style="width: 200px; background: #059669; margin-left: 120px;">summarized when B[5] arrives</div>
+    </div>
+    <div class="timing-row">
+      <div class="timing-event">B[5] tool_result (340 tok)</div>
+      <div class="timing-bar" style="width: 200px; background: #059669; margin-left: 180px;">summarized when B[7] arrives</div>
+    </div>
+    <div class="timing-row">
+      <div class="timing-event">B[6] thinking (250 tok)</div>
+      <div class="timing-bar" style="width: 200px; background: #7c3aed; margin-left: 210px;">summarized when B[8] arrives</div>
+    </div>
+    <div class="timing-row">
+      <div class="timing-event">B[7] raw_output (220 tok)</div>
+      <div class="timing-bar" style="width: 200px; background: #6b7280; margin-left: 240px;">summarized when B[9] arrives</div>
+    </div>
+    <div class="timing-row">
+      <div class="timing-event">B[9] thinking (300 tok)</div>
+      <div class="timing-bar" style="width: 200px; background: #7c3aed; margin-left: 300px;">summarized when B[11] arrives</div>
+    </div>
+
+    <div style="margin-top: 12px; font-size: 11px; color: #fbbf24;">
+      ⚡ Last 2 blocks: summarized when assistant message completes (end-of-response trigger with 0 lookahead).
+    </div>
+  </div>
+</div>
+</body></html>

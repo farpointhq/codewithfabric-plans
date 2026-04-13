@@ -1,0 +1,1340 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Work-in-progress implementation plans for CodeWithFabric">
+      
+      
+      
+        <link rel="canonical" href="https://farpointhq.github.io/codewithfabric-plans/plans/teams-billing-architecture-plan/">
+      
+      
+        <link rel="prev" href="../issue-1810-plan/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Teams &amp; Billing Architecture — Current vs. Target - CodeWithFabric Plans</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <link href="../../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: #1a1a1aee; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#teams-billing-architecture-current-vs-target" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="CodeWithFabric Plans" class="md-header__button md-logo" aria-label="CodeWithFabric Plans" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            CodeWithFabric Plans
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Teams &amp; Billing Architecture — Current vs. Target
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="purple" aria-label="Switch to light mode" type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="purple" aria-label="Switch to dark mode" type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="CodeWithFabric Plans" class="md-nav__button md-logo" aria-label="CodeWithFabric Plans" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    CodeWithFabric Plans
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plans
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Plans
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../issue-64-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Issue #64 – Team Management Schema &amp; Auth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../issue-65-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Issue #65 – Team Invite Flow &amp; Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../issue-66-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Issue #66 – Member CRUD &amp; Per-Seat Purchasing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../issue-67-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Issue #67 – Hierarchical Teams &amp; Property Inheritance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../issue-1810-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Issue #1810 – Block-Level Eager Summarization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Teams &amp; Billing Architecture
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Teams &amp; Billing Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#tldr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TL;DR
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-picture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The picture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#current-state-as-built-on-main" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current State (as-built on main)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Current State (as-built on main)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#data-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#team-creation-sites-today" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Team creation sites (today)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#invitation-acceptance-migration-already-built" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Invitation acceptance migration (already built)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#target-state-ryans-vision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Target State (Ryan's vision)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Target State (Ryan's vision)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#invariants-the-system-should-enforce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Invariants the system should enforce
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#who-pays-for-what-target-decision-order-per-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Who pays for what — target decision order per request
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gaps-recommendations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gaps &amp; recommendations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Gaps &amp; recommendations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gap-1-monsuratecom-billingts-is-out-of-sync-blocker-fix-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gap 1 — monsurate.com billing.ts is out of sync (BLOCKER, fix now)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gap-2-no-shared-helper-between-apps-fix-now-cheap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gap 2 — No shared helper between apps (fix now, cheap)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gap-3-no-auto-team-on-signup-fix-later-medium" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gap 3 — No auto-team on signup (fix later, medium)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gap-4-only-unlimited-owners-can-invite-members-guard-fix-later-small" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gap 4 — "Only Unlimited owners can invite members" guard (fix later, small)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gap-5-team-pool-draw-with-per-member-monthly-cap-enforced-at-request-time-defer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gap 5 — Team-pool draw with per-member monthly cap enforced at request time (defer)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended sequence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-questions-for-ryan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open questions for Ryan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#not-in-this-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Not in this plan
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#tldr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TL;DR
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-picture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The picture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#current-state-as-built-on-main" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current State (as-built on main)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Current State (as-built on main)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#data-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#team-creation-sites-today" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Team creation sites (today)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#invitation-acceptance-migration-already-built" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Invitation acceptance migration (already built)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#target-state-ryans-vision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Target State (Ryan's vision)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Target State (Ryan's vision)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#invariants-the-system-should-enforce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Invariants the system should enforce
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#who-pays-for-what-target-decision-order-per-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Who pays for what — target decision order per request
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gaps-recommendations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gaps &amp; recommendations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Gaps &amp; recommendations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gap-1-monsuratecom-billingts-is-out-of-sync-blocker-fix-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gap 1 — monsurate.com billing.ts is out of sync (BLOCKER, fix now)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gap-2-no-shared-helper-between-apps-fix-now-cheap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gap 2 — No shared helper between apps (fix now, cheap)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gap-3-no-auto-team-on-signup-fix-later-medium" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gap 3 — No auto-team on signup (fix later, medium)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gap-4-only-unlimited-owners-can-invite-members-guard-fix-later-small" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gap 4 — "Only Unlimited owners can invite members" guard (fix later, small)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gap-5-team-pool-draw-with-per-member-monthly-cap-enforced-at-request-time-defer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gap 5 — Team-pool draw with per-member monthly cap enforced at request time (defer)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended sequence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-questions-for-ryan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open questions for Ryan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#not-in-this-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Not in this plan
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="teams-billing-architecture-current-vs-target">Teams &amp; Billing Architecture — Current vs. Target<a class="headerlink" href="#teams-billing-architecture-current-vs-target" title="Permanent link">¶</a></h1>
+<blockquote>
+<p>Written 2026-04-13 from Ryan's verbal vision during the monsurate.com remix-unblock session. This plan documents <strong>where we are, where we want to be, and which gaps are worth closing now vs. later.</strong> No implementation happens until Ryan signs off on direction.</p>
+</blockquote>
+<h2 id="tldr">TL;DR<a class="headerlink" href="#tldr" title="Permanent link">¶</a></h2>
+<p>codewithfabric <strong>already has</strong> most of the teams architecture Ryan described:</p>
+<ul>
+<li>✅ <code>Team</code> with hierarchy (<code>parentTeamId</code>, anti-hijacking check, <code>MAX_HIERARCHY_DEPTH</code>)</li>
+<li>✅ <code>TeamMember</code> with per-member knobs: <code>isUnlimited</code>, <code>monthlyLimitCents</code>, <code>currentMonthSpendCents</code>, <code>budgetResetAt</code>, <code>rateLimitRpm</code>, <code>billingProvider</code> (<code>SELF</code> | <code>TEAM_OWNER</code>), per-member <code>stripeSubscriptionId</code></li>
+<li>✅ Separate <code>User.balanceCents</code> and <code>Team.balanceCents</code> — independent wallets</li>
+<li>✅ 5-state invitation migration with downline support (<code>OWNS_TEAM_WITH_MEMBERS</code> → becomes sub-team)</li>
+<li>✅ Per-member subscribe/unsubscribe/settings routes; dashboard, analytics, invitations</li>
+</ul>
+<p>Four meaningful <strong>gaps</strong> between the code today and the vision:</p>
+<ol>
+<li><strong>No empty team on signup.</strong> Teams are created lazily at first purchase. Users without a purchase have no team at all, which contradicts "everyone has a team, even if it's just themselves".</li>
+<li><strong>No "team owner must have Unlimited" guard.</strong> Any user can invite members today as long as they have <em>some</em> billing (balance or Unlimited). The vision: you can't create/invite unless you have an Unlimited plan.</li>
+<li><strong>monsurate.com <code>billing.ts</code> is out of sync with the canonical pattern.</strong> It iterates <code>user.teamMembers</code> only, so owner-only teams (i.e. <em>every</em> Fabric Unlimited user, including Ryan and Mena) are treated as having no credits. Immediate bug blocking remix for every Unlimited user on monsurate.</li>
+<li><strong>No shared helper between the two Next.js apps.</strong> codewithfabric's <code>team-helpers.ts</code>/<code>team-auth.ts</code> are duplicated informally by monsurate, which is how gap #3 drifted in the first place.</li>
+</ol>
+<h2 id="the-picture">The picture<a class="headerlink" href="#the-picture" title="Permanent link">¶</a></h2>
+<p><a class="glightbox" data-type="image" data-width="100%" data-height="auto" href="../teams-billing-architecture.png" data-desc-position="bottom"><img alt="Current vs Target Architecture" src="../teams-billing-architecture.png"></a></p>
+<p><a class="glightbox" data-type="image" data-width="100%" data-height="auto" href="../teams-invite-state-machine.png" data-desc-position="bottom"><img alt="Invite migration state machine (already built)" src="../teams-invite-state-machine.png"></a></p>
+<h2 id="current-state-as-built-on-main">Current State (as-built on <code>main</code>)<a class="headerlink" href="#current-state-as-built-on-main" title="Permanent link">¶</a></h2>
+<h3 id="data-model">Data model<a class="headerlink" href="#data-model" title="Permanent link">¶</a></h3>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Fields that matter for billing</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>User</code></td>
+<td><code>balanceCents</code>, <code>stripeCustomerId</code>, <code>litellmUserId</code></td>
+<td>Individual wallet, independent of any team.</td>
+</tr>
+<tr>
+<td><code>Team</code></td>
+<td><code>ownerId</code>, <code>parentTeamId</code>, <code>balanceCents</code>, <code>isUnlimited</code>, <code>unlimitedTier</code>, <code>unlimitedCurrentPeriodEnd</code>, <code>subscriptionStatus</code></td>
+<td>Shared pool + owner-paid subscription container.</td>
+</tr>
+<tr>
+<td><code>TeamMember</code></td>
+<td><code>userId</code>, <code>teamId</code>, <code>role</code>, <code>billingProvider</code> (<code>SELF</code>/<code>TEAM_OWNER</code>), <code>isUnlimited</code>, <code>stripeSubscriptionId</code>, <code>monthlyLimitCents</code>, <code>currentMonthSpendCents</code>, <code>budgetResetAt</code>, <code>rateLimitRpm</code></td>
+<td>Per-member overrides; each member can be self-paid or owner-paid, capped, rate-limited.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key convention</strong> (source: <code>src/lib/team-helpers.ts</code>, <code>src/lib/team-auth.ts</code>, <code>src/lib/team-invite.ts</code>):</p>
+<ul>
+<li>Owner is <strong>not</strong> a <code>TeamMember</code> row. Listings synthesize a virtual <code>OWNER</code> entry (<code>buildMembersList</code> prepends it).</li>
+<li>"Which team is this user in?" is resolved by <code>findUserTeamId</code>: <code>user.ownedTeams[0] ?? user.teamMembers[0]?.team</code>. This is the canonical pattern every consumer must follow.</li>
+</ul>
+<h3 id="team-creation-sites-today">Team creation sites (today)<a class="headerlink" href="#team-creation-sites-today" title="Permanent link">¶</a></h3>
+<table>
+<thead>
+<tr>
+<th>Site</th>
+<th>When</th>
+<th>Creates <code>TeamMember</code> for owner?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>src/app/api/stripe/webhooks/route.ts</code> (checkout.session.completed)</td>
+<td>First credit purchase</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>src/lib/balance.ts::addCredits</code></td>
+<td>Programmatic credit add</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>src/lib/provision-unlimited.ts::provisionUnlimited</code></td>
+<td>Unlimited subscription activation</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Signup / <code>createUser</code> event</td>
+<td>—</td>
+<td><strong>No team is created at all</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="invitation-acceptance-migration-already-built">Invitation acceptance migration (already built)<a class="headerlink" href="#invitation-acceptance-migration-already-built" title="Permanent link">¶</a></h3>
+<p><code>src/lib/team-invite.ts</code> handles 5 invitee states in a single transaction:</p>
+<table>
+<thead>
+<tr>
+<th>Invitee state</th>
+<th>What happens when they accept</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NO_TEAM</code></td>
+<td>Added as <code>TEAM_OWNER</code>-billed member</td>
+</tr>
+<tr>
+<td><code>OWNS_EMPTY_NO_SUB</code></td>
+<td>Their empty team is deleted; added as <code>TEAM_OWNER</code>-billed member</td>
+</tr>
+<tr>
+<td><code>OWNS_EMPTY_WITH_SUB</code></td>
+<td>They keep their own team (has billing); added to new team as <code>SELF</code>-billed member</td>
+</tr>
+<tr>
+<td><code>OWNS_TEAM_WITH_MEMBERS</code></td>
+<td>Their team becomes a <strong>sub-team</strong> (<code>parentTeamId</code>); they join as <code>TEAM_OWNER</code>-billed member. This is the "downline" behavior Ryan described.</td>
+</tr>
+<tr>
+<td><code>MEMBER_OF_OTHER</code></td>
+<td>Removed from old team, added to new as <code>TEAM_OWNER</code>-billed member</td>
+</tr>
+</tbody>
+</table>
+<p><code>checkAntiHijacking</code> prevents a circular hierarchy (can't invite someone whose team is an ancestor of yours).</p>
+<h2 id="target-state-ryans-vision">Target State (Ryan's vision)<a class="headerlink" href="#target-state-ryans-vision" title="Permanent link">¶</a></h2>
+<h3 id="invariants-the-system-should-enforce">Invariants the system should enforce<a class="headerlink" href="#invariants-the-system-should-enforce" title="Permanent link">¶</a></h3>
+<ol>
+<li><strong>Every user has a team.</strong> On signup, create a default empty team owned by the user. The user is <em>not</em> a <code>TeamMember</code> row of it (consistent with current convention).</li>
+<li><strong>User balance ≠ team balance, always.</strong> Individuals have their own wallets, team owners have their own wallets, and a "team pool" (<code>Team.balanceCents</code>) is a separate third bucket that members draw from via per-member monthly caps.</li>
+<li><strong>Owning a team is free. Inviting members requires Unlimited.</strong> The existence of an empty team is cheap and automatic. Upgrading from "solo team" to "team with members" is gated behind <code>Team.isUnlimited &amp;&amp; !expired</code>.</li>
+<li><strong>The owner is a first-class billing participant of their own team pool.</strong> They can optionally set their own <code>monthlyLimitCents</code> against the team pool (even though they own it).</li>
+<li><strong>Purchases can be directed.</strong> Any user can buy credits for themselves. A team owner can additionally buy (a) credits that flow into <code>Team.balanceCents</code>, (b) an Unlimited subscription for themselves, (c) an Unlimited subscription <em>for a specific member</em> (already built — see <code>api/team/members/[memberId]/subscribe</code>).</li>
+<li><strong>"Who pays for what" is per-member, not per-team.</strong> <code>TeamMember.billingProvider</code> already encodes this. The rule is: if a member has their own Unlimited, they use it; else if the team owner has bought Unlimited for them, use that; else the team pool (capped by their <code>monthlyLimitCents</code>); else their personal <code>User.balanceCents</code>; else refuse.</li>
+</ol>
+<h3 id="who-pays-for-what-target-decision-order-per-request">Who pays for what — target decision order per request<a class="headerlink" href="#who-pays-for-what-target-decision-order-per-request" title="Permanent link">¶</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>1. member.isUnlimited &amp;&amp; !expired                → member's own Unlimited sub
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>2. team.isUnlimited &amp;&amp; !expired &amp;&amp; member.billingProvider == TEAM_OWNER
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>                                                  → owner-bought Unlimited covers member
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>3. team.balanceCents &gt; 0 &amp;&amp; member.monthlyLimitCents allows
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>                                                  → decrement team pool,
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>                                                    increment member.currentMonthSpend
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>4. user.balanceCents &gt; 0                          → decrement user wallet
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>5. else                                           → 402 insufficient_credits
+</code></pre></div>
+<p>Today's actual resolution in <code>hasActiveSubscription</code> (<code>api/user/status/route.ts</code>) only checks steps 1/2/4 — the fine-grained "team pool with per-member cap" logic exists in the schema but isn't enforced at request time yet (at least not that I could verify in one pass; worth a second look during implementation).</p>
+<h2 id="gaps-recommendations">Gaps &amp; recommendations<a class="headerlink" href="#gaps-recommendations" title="Permanent link">¶</a></h2>
+<h3 id="gap-1-monsuratecom-billingts-is-out-of-sync-blocker-fix-now">Gap 1 — monsurate.com <code>billing.ts</code> is out of sync (BLOCKER, fix now)<a class="headerlink" href="#gap-1-monsuratecom-billingts-is-out-of-sync-blocker-fix-now" title="Permanent link">¶</a></h3>
+<p><strong>Impact:</strong> Every Fabric Unlimited user hitting "Remix" on monsurate.com is told to buy credits, even Ryan. Mena's state:
+<code>aghoghomena.akasukpe@ontariotechu.net</code> owns <code>Mena's Team</code> with <code>isUnlimited=true</code>, <code>balanceCents=9758</code> ($97.58), <code>subscriptionStatus=ACTIVE</code>, <code>unlimitedCurrentPeriodEnd=2026-05-13</code>. All three billing paths should grant access; none fire because billing.ts never checks <code>ownedTeams</code>.</p>
+<p><strong>Fix:</strong> Mirror the canonical pattern in <code>monsurate.com/src/lib/billing.ts</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">const</span><span class="w"> </span><span class="nx">team</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">user</span><span class="p">.</span><span class="nx">ownedTeams</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="nx">user</span><span class="p">.</span><span class="nx">teamMembers</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">?</span><span class="p">.</span><span class="nx">team</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">team</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">isUnlimitedLive</span><span class="p">(</span><span class="nx">team</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">hasCredits</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span><span class="w"> </span><span class="nx">source</span><span class="o">:</span><span class="w"> </span><span class="s2">"unlimited"</span><span class="p">,</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="p">};</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">team</span><span class="p">.</span><span class="nx">balanceCents</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mf">0</span><span class="p">)</span><span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">hasCredits</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span><span class="w"> </span><span class="nx">source</span><span class="o">:</span><span class="w"> </span><span class="s2">"team"</span><span class="p">,</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="p">};</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="p">}</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">hasCredits</span><span class="o">:</span><span class="w"> </span><span class="kt">user.balanceCents</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mf">0</span><span class="p">,</span><span class="w"> </span><span class="nx">source</span><span class="o">:</span><span class="w"> </span><span class="s2">"user"</span><span class="p">,</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="p">};</span>
+</code></pre></div>
+<p><strong>Scope:</strong> 1 file in monsurate, ~20 LOC. No codewithfabric changes. Unblocks Mena / Ryan / every Unlimited user on monsurate tonight.</p>
+<h3 id="gap-2-no-shared-helper-between-apps-fix-now-cheap">Gap 2 — No shared helper between apps (fix now, cheap)<a class="headerlink" href="#gap-2-no-shared-helper-between-apps-fix-now-cheap" title="Permanent link">¶</a></h3>
+<p><strong>Impact:</strong> Gap #1 exists because monsurate reinvented billing logic. Anything that adds a third consumer will re-drift.</p>
+<p><strong>Fix options:</strong>
+- <strong>Now (cheap):</strong> copy <code>findUserTeamId</code> + <code>hasActiveSubscription</code> from codewithfabric into <code>monsurate.com/src/lib/team-helpers.ts</code> as a literal copy with a comment pointing at the source of truth. Not DRY, but explicit and no monorepo plumbing.
+- <strong>Later (proper):</strong> extract <code>team-helpers.ts</code> into <code>@fabric/team-helpers</code> workspace package, consumed by both apps. Blocked on whether we want to share more code across the two Next.js projects in general — that's a separate architectural decision.</p>
+<p><strong>Recommendation:</strong> do the literal copy now, queue the workspace-package refactor as a separate plan.</p>
+<h3 id="gap-3-no-auto-team-on-signup-fix-later-medium">Gap 3 — No auto-team on signup (fix later, medium)<a class="headerlink" href="#gap-3-no-auto-team-on-signup-fix-later-medium" title="Permanent link">¶</a></h3>
+<p><strong>Impact:</strong> Today, a fresh signup has no team. They only get one if/when they buy something. This means <code>findUserTeamId</code> returns null for ~every free-tier user, and any UI that assumes "you have a team, here's your dashboard" has to special-case the null. Ryan's vision has every user owning an empty team from day one.</p>
+<p><strong>Fix:</strong> Add a <code>team.create</code> step to the NextAuth <code>createUser</code> event in <code>src/lib/auth.ts</code> and the password signup route. The created team has:
+- <code>name: "${userName}'s Team"</code>
+- <code>ownerId: user.id</code>
+- <code>isUnlimited: false</code>
+- <code>balanceCents: 0</code>
+- <code>subscriptionStatus: INACTIVE</code></p>
+<p><strong>Backfill:</strong> One-shot script to create empty teams for existing users who don't own one. Safe because nothing downstream assumes "no team = free tier" today — <code>findUserTeamId</code> already returns null for those users.</p>
+<p><strong>Risks:</strong> Low. The invariant is additive. Does not affect existing data. LiteLLM team provisioning may need a parallel hook if teams are expected upstream, but currently LiteLLM is keyed on user, not team.</p>
+<h3 id="gap-4-only-unlimited-owners-can-invite-members-guard-fix-later-small">Gap 4 — "Only Unlimited owners can invite members" guard (fix later, small)<a class="headerlink" href="#gap-4-only-unlimited-owners-can-invite-members-guard-fix-later-small" title="Permanent link">¶</a></h3>
+<p><strong>Impact:</strong> Today, <code>api/team/invitations/route.ts</code> and <code>api/team/members/route.ts</code> don't enforce "you must have Unlimited to invite". Any team with a balance can invite. Ryan's vision: inviting is gated behind <code>team.isUnlimited &amp;&amp; unlimitedCurrentPeriodEnd &gt; now</code>.</p>
+<p><strong>Fix:</strong> Add a guard at the top of the invitation-creation route and the member-adding route:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">team</span><span class="p">.</span><span class="nx">isUnlimited</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">!</span><span class="nx">team</span><span class="p">.</span><span class="nx">unlimitedCurrentPeriodEnd</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">team</span><span class="p">.</span><span class="nx">unlimitedCurrentPeriodEnd</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nb">Date</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">NextResponse</span><span class="p">.</span><span class="nx">json</span><span class="p">({</span><span class="w"> </span><span class="nx">error</span><span class="o">:</span><span class="w"> </span><span class="s2">"Unlimited subscription required to invite team members"</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">status</span><span class="o">:</span><span class="w"> </span><span class="kt">402</span><span class="w"> </span><span class="p">});</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="p">}</span>
+</code></pre></div>
+<p><strong>Recommendation:</strong> Land this <em>after</em> gap #3, so that when the guard lands, every existing user already has a team (even if empty and ungated) and the only thing we're restricting is the "add a second person" action.</p>
+<h3 id="gap-5-team-pool-draw-with-per-member-monthly-cap-enforced-at-request-time-defer">Gap 5 — Team-pool draw with per-member monthly cap enforced at request time (defer)<a class="headerlink" href="#gap-5-team-pool-draw-with-per-member-monthly-cap-enforced-at-request-time-defer" title="Permanent link">¶</a></h3>
+<p><strong>Impact:</strong> The schema has <code>Team.balanceCents</code>, <code>TeamMember.monthlyLimitCents</code>, <code>TeamMember.currentMonthSpendCents</code>, <code>TeamMember.budgetResetAt</code> — all the pieces. I didn't verify whether the LiteLLM proxy + usage ingestion actually decrement from the team pool and enforce the per-member cap at inference time. This needs a separate deep-dive before I can plan it; not blocking remix.</p>
+<p><strong>Recommendation:</strong> Defer. Open a separate plan after we've confirmed the current enforcement behavior end-to-end.</p>
+<h2 id="recommended-sequence">Recommended sequence<a class="headerlink" href="#recommended-sequence" title="Permanent link">¶</a></h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Action</th>
+<th>Repo</th>
+<th>Risk</th>
+<th>Unblocks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Fix monsurate <code>billing.ts</code> to mirror canonical pattern</td>
+<td><code>monsurate.com</code></td>
+<td>Low</td>
+<td>Mena, Ryan, all Unlimited users on monsurate <strong>tonight</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Copy <code>findUserTeamId</code> + <code>hasActiveSubscription</code> helpers into <code>monsurate.com/src/lib/team-helpers.ts</code></td>
+<td><code>monsurate.com</code></td>
+<td>Low</td>
+<td>Prevents future drift</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Auto-create empty team on signup (event + backfill)</td>
+<td><code>codewithfabric</code></td>
+<td>Low-medium</td>
+<td>Vision invariant #1</td>
+</tr>
+<tr>
+<td>4</td>
+<td>"Inviting requires Unlimited" guard</td>
+<td><code>codewithfabric</code></td>
+<td>Low</td>
+<td>Vision invariant #3</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Verify &amp; document team-pool per-member cap enforcement at request time</td>
+<td><code>codewithfabric</code> + LiteLLM</td>
+<td>Unknown</td>
+<td>Vision invariant #5 (full behavior)</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Shared <code>@fabric/team-helpers</code> workspace package</td>
+<td>Both</td>
+<td>Medium</td>
+<td>Eliminates copy-paste from step 2</td>
+</tr>
+</tbody>
+</table>
+<p>Steps 1–2 are tonight. Step 3 is a small PR. Step 4 is a one-line guard. Step 5 needs investigation first. Step 6 is a future refactor we can defer indefinitely — the literal copy from step 2 is <em>fine</em> as long as we keep the two functions small and well-commented.</p>
+<h2 id="open-questions-for-ryan">Open questions for Ryan<a class="headerlink" href="#open-questions-for-ryan" title="Permanent link">¶</a></h2>
+<ol>
+<li><strong>Signup-time team creation — do we include a default <code>TeamMember</code> row for the owner?</strong> Current convention says no (owner is synthesized as a virtual OWNER entry). Ryan's vision is consistent with that — "the owner is not automatically a member, but they're the owner". Keep the convention.</li>
+<li><strong>Should the owner's personal <code>User.balanceCents</code> ever be drawn for their <em>own</em> usage when they also have a team?</strong> My read: yes, as a last-resort after team Unlimited and team pool, since the owner is "just another user" from a metering standpoint. Confirm.</li>
+<li><strong>"Unlimited required to invite" — do we grandfather existing teams that currently have members but no Unlimited?</strong> Unlikely to be any (you already filtered the Unlimited teams list and the owner-only pattern is universal), but worth a check before landing gap #4.</li>
+<li><strong>monsurate's credit-purchase UX</strong> — when a <em>monsurate-only</em> user (no Fabric link) runs out of credits, do we (a) bounce them to <code>codewithfabric.com/dashboard/billing</code>, (b) build a purchase flow inside monsurate using the existing PayPal routes from codewithfabric, or (c) do nothing and assume every monsurate user is a Fabric user too? Current code does (a). Your original verbal flow suggested (b). This is a product question, not a code question.</li>
+</ol>
+<h2 id="not-in-this-plan">Not in this plan<a class="headerlink" href="#not-in-this-plan" title="Permanent link">¶</a></h2>
+<ul>
+<li>PayPal checkout flow for monsurate-native purchases</li>
+<li>Promotional coupons / beta credit grants</li>
+<li>Litellm-level rate limiting enforcement</li>
+<li>Monsurate-specific "remix credit" economy separate from Fabric credits</li>
+</ul>
+<p>Those are adjacent and can be planned independently.</p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>

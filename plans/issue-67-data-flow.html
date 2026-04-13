@@ -1,0 +1,80 @@
+<link rel="stylesheet" href="../stylesheets/extra.css">
+<div class="diagram">
+  <div class="diagram-title" style="font-size:16px;font-weight:700;margin-bottom:20px;color:#a5b4fc;">Issue #67 — Architecture Overview</div>
+
+  <div style="display:flex;gap:16px;margin-bottom:16px;">
+    <div class="diagram-box renderer" style="flex:1;">
+      <div class="diagram-box-title">NEW FILE: team-hierarchy.ts</div>
+      <div class="diagram-steps">
+        <div class="diagram-step">
+          <span class="diagram-step-text"><code class="diagram-step-code">resolveMonthlyLimit(prisma, memberId)</code></span>
+        </div>
+        <div class="diagram-step">
+          <span class="diagram-step-text"><code class="diagram-step-code">checkAndResetBudget(member)</code></span>
+        </div>
+        <div class="diagram-step">
+          <span class="diagram-step-text"><code class="diagram-step-code">getNextMonthStart()</code></span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;">
+      <div style="font-size:24px;color:#4338ca;">→</div>
+    </div>
+
+    <div class="diagram-box main" style="flex:1;">
+      <div class="diagram-box-title">MODIFIED: litellm/callback/route.ts</div>
+      <div class="diagram-steps">
+        <div class="diagram-step">
+          <span class="diagram-step-text">Imports <code class="diagram-step-code">checkAndResetBudget</code></span>
+        </div>
+        <div class="diagram-step">
+          <span class="diagram-step-text">Finds <code class="diagram-step-code">TeamMember</code> for user</span>
+        </div>
+        <div class="diagram-step">
+          <span class="diagram-step-text">Resets budget if <code class="diagram-step-code">budgetResetAt</code> past</span>
+        </div>
+        <div class="diagram-step">
+          <span class="diagram-step-text">Increments <code class="diagram-step-code">currentMonthSpendCents</code></span>
+        </div>
+        <div class="diagram-step">
+          <span class="diagram-step-text">Logs warning if over limit</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:16px;">
+    <div style="flex:1;background:#1f2937;border:1px solid #374151;border-radius:8px;padding:16px;">
+      <div style="font-size:11px;font-weight:600;color:#9ca3af;letter-spacing:1px;margin-bottom:12px;">DATABASE READS</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:#86efac;font-size:12px;">●</span>
+          <span style="color:#e5e5e5;font-size:13px;"><code style="background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;font-size:12px;">TeamMember.findFirst({ userId })</code></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:#86efac;font-size:12px;">●</span>
+          <span style="color:#e5e5e5;font-size:13px;"><code style="background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;font-size:12px;">Team.findFirst({ ownerId | members })</code></span>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:1;background:#1f2937;border:1px solid #374151;border-radius:8px;padding:16px;">
+      <div style="font-size:11px;font-weight:600;color:#9ca3af;letter-spacing:1px;margin-bottom:12px;">DATABASE WRITES</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:#a5b4fc;font-size:12px;">●</span>
+          <span style="color:#e5e5e5;font-size:13px;"><code style="background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;font-size:12px;">TeamMember.update({ currentMonthSpendCents: increment })</code></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:#a5b4fc;font-size:12px;">●</span>
+          <span style="color:#e5e5e5;font-size:13px;"><code style="background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;font-size:12px;">TeamMember.update({ budgetResetAt, currentMonthSpendCents: 0 })</code></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:#a5b4fc;font-size:12px;">●</span>
+          <span style="color:#e5e5e5;font-size:13px;"><code style="background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;font-size:12px;">Team.update({ balanceCents: decrement })</code> (existing)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

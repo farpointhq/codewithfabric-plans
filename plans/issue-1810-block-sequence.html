@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 24px; background: #0a0a0a; font-family: 'Inter', -apple-system, sans-serif; }
+  .diagram { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 28px; color: #e5e5e5; max-width: 1100px; }
+  .title { font-size: 18px; font-weight: 700; color: #a5b4fc; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #9ca3af; margin-bottom: 24px; }
+  .msg-boundary { display: flex; align-items: center; gap: 10px; margin: 16px 0 8px; }
+  .msg-boundary-line { flex: 1; height: 1px; background: #374151; }
+  .msg-boundary-label { font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+  .block-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+  .block-index { font-size: 11px; color: #6b7280; width: 28px; text-align: right; font-family: monospace; flex-shrink: 0; }
+  .block { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 6px; font-size: 13px; border: 1px solid; flex: 1; }
+  .block.user { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; }
+  .block.thinking { background: #2d1a3e; border-color: #a855f7; color: #d8b4fe; }
+  .block.tool-call { background: #1a3a2a; border-color: #22c55e; color: #86efac; }
+  .block.tool-result { background: #162b1f; border-color: #059669; color: #6ee7b7; }
+  .block.raw-output { background: #1f2937; border-color: #6b7280; color: #d1d5db; }
+  .block-icon { font-size: 14px; flex-shrink: 0; }
+  .block-type { font-size: 10px; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.5px; }
+  .block-content { font-size: 12px; opacity: 0.85; flex: 1; }
+  .block-tokens { font-size: 10px; opacity: 0.5; font-family: monospace; white-space: nowrap; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 20px; padding-top: 16px; border-top: 1px solid #1f2937; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #9ca3af; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+  .annotation { font-size: 11px; color: #fbbf24; margin: 12px 0; padding: 8px 12px; background: rgba(251, 191, 36, 0.08); border-left: 3px solid #fbbf24; border-radius: 0 4px 4px 0; }
+</style>
+</head><body>
+<div class="diagram">
+  <div class="title">Conversation as a Flat Block Sequence</div>
+  <div class="subtitle">Each segment — thinking, tool call, tool result, raw output, user message — is its own block unit (B[n]). Message boundaries don't matter for summarization.</div>
+
+  <!-- Assistant Message 1 -->
+  <div class="msg-boundary">
+    <div class="msg-boundary-line"></div>
+    <div class="msg-boundary-label">User Message</div>
+    <div class="msg-boundary-line"></div>
+  </div>
+
+  <div class="block-row">
+    <div class="block-index">B[0]</div>
+    <div class="block user">
+      <span class="block-icon">👤</span>
+      <span class="block-content">Read the config.json and requirements.txt files. Explain them briefly.</span>
+      <span class="block-tokens">~25 tok</span>
+    </div>
+  </div>
+
+  <div class="msg-boundary">
+    <div class="msg-boundary-line"></div>
+    <div class="msg-boundary-label">Assistant Message 1</div>
+    <div class="msg-boundary-line"></div>
+  </div>
+
+  <div class="block-row">
+    <div class="block-index">B[1]</div>
+    <div class="block thinking">
+      <span class="block-icon">💭</span>
+      <span class="block-content">Let me read both files to understand the project setup...</span>
+      <span class="block-tokens">~180 tok</span>
+    </div>
+  </div>
+
+  <div class="block-row">
+    <div class="block-index">B[2]</div>
+    <div class="block tool-call">
+      <span class="block-icon">🔧</span>
+      <span class="block-content">Read(config.json)</span>
+      <span class="block-tokens">~15 tok</span>
+    </div>
+  </div>
+
+  <div class="block-row">
+    <div class="block-index">B[3]</div>
+    <div class="block tool-result">
+      <span class="block-icon">📄</span>
+      <span class="block-content">{"name": "my-app", "version": "2.1.0", "dependencies": { "react": "^18.2", ... }}</span>
+      <span class="block-tokens">~520 tok</span>
+    </div>
+  </div>
+
+  <div class="block-row">
+    <div class="block-index">B[4]</div>
+    <div class="block tool-call">
+      <span class="block-icon">🔧</span>
+      <span class="block-content">Read(requirements.txt)</span>
+      <span class="block-tokens">~15 tok</span>
+    </div>
+  </div>
+
+  <div class="block-row">
+    <div class="block-index">B[5]</div>
+    <div class="block tool-result">
+      <span class="block-icon">📄</span>
+      <span class="block-content">flask==2.3.0\nrequests==2.31.0\nnumpy==1.24.0\npandas==2.0.1\n...</span>
+      <span class="block-tokens">~340 tok</span>
+    </div>
+  </div>
+
+  <div class="block-row">
+    <div class="block-index">B[6]</div>
+    <div class="block thinking">
+      <span class="block-icon">💭</span>
+      <span class="block-content">Now I have both files. config.json is an npm project config, requirements.txt is Python deps...</span>
+      <span class="block-tokens">~250 tok</span>
+    </div>
+  </div>
+
+  <div class="block-row">
+    <div class="block-index">B[7]</div>
+    <div class="block raw-output">
+      <span class="block-icon">💬</span>
+      <span class="block-content">Here's a brief explanation of both files: config.json defines a Node.js project called "my-app" v2.1.0 with React 18...</span>
+      <span class="block-tokens">~220 tok</span>
+    </div>
+  </div>
+
+  <div class="annotation">
+    ↑ That's 8 blocks (B[0]–B[7]) across 1 user message + 1 assistant message. Each block is an independent unit for summarization. User messages (B[0]) are never summarized but ARE used as context.
+  </div>
+
+  <!-- User Message 2 -->
+  <div class="msg-boundary">
+    <div class="msg-boundary-line"></div>
+    <div class="msg-boundary-label">User Message</div>
+    <div class="msg-boundary-line"></div>
+  </div>
+
+  <div class="block-row">
+    <div class="block-index">B[8]</div>
+    <div class="block user">
+      <span class="block-icon">👤</span>
+      <span class="block-content">Now refactor the Flask app to use blueprints.</span>
+      <span class="block-tokens">~12 tok</span>
+    </div>
+  </div>
+
+  <div class="msg-boundary">
+    <div class="msg-boundary-line"></div>
+    <div class="msg-boundary-label">Assistant Message 2</div>
+    <div class="msg-boundary-line"></div>
+  </div>
+
+  <div class="block-row">
+    <div class="block-index">B[9]</div>
+    <div class="block thinking">
+      <span class="block-icon">💭</span>
+      <span class="block-content">The user wants to refactor app.py to use Flask blueprints. I need to read the current app structure first...</span>
+      <span class="block-tokens">~300 tok</span>
+    </div>
+  </div>
+
+  <div class="block-row">
+    <div class="block-index">B[10]</div>
+    <div class="block tool-call">
+      <span class="block-icon">🔧</span>
+      <span class="block-content">Read(app.py)</span>
+      <span class="block-tokens">~12 tok</span>
+    </div>
+  </div>
+
+  <div class="block-row">
+    <div class="block-index">B[11]</div>
+    <div class="block tool-result">
+      <span class="block-icon">📄</span>
+      <span class="block-content">from flask import Flask, render_template, jsonify\napp = Flask(__name__)\n@app.route('/')...</span>
+      <span class="block-tokens">~1,800 tok</span>
+    </div>
+  </div>
+
+  <div class="block-row">
+    <div class="block-index">B[12]</div>
+    <div class="block tool-call">
+      <span class="block-icon">🔧</span>
+      <span class="block-content">Write(routes/api.py)</span>
+      <span class="block-tokens">~450 tok</span>
+    </div>
+  </div>
+
+  <div class="block-row">
+    <div class="block-index">B[13]</div>
+    <div class="block tool-result">
+      <span class="block-icon">📄</span>
+      <span class="block-content">File written: routes/api.py (24 lines)</span>
+      <span class="block-tokens">~25 tok</span>
+    </div>
+  </div>
+
+  <div class="block-row">
+    <div class="block-index">B[14]</div>
+    <div class="block raw-output">
+      <span class="block-icon">💬</span>
+      <span class="block-content">I've refactored the Flask app to use blueprints. Created routes/api.py with the API routes...</span>
+      <span class="block-tokens">~350 tok</span>
+    </div>
+  </div>
+
+  <div class="annotation">
+    Total: 15 blocks across 2 user messages + 2 assistant messages. The blocks form a flat, ordered sequence regardless of message boundaries.
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;"></div> User message (never summarized)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Thinking / Reasoning</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#22c55e;"></div> Tool Call (args)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#059669;"></div> Tool Result (often large)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#6b7280;"></div> Raw Output (response text)</div>
+  </div>
+</div>
+</body></html>

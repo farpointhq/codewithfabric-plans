@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 32px; background: #0a0a0a; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+  .page { max-width: 1480px; margin: 0 auto; color: #e5e5e5; }
+  .page-title { font-size: 22px; font-weight: 800; color: #f3f4f6; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: #9ca3af; margin-bottom: 24px; }
+
+  .row { display: flex; gap: 20px; align-items: stretch; }
+
+  .panel { flex: 1; background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 24px; }
+  .panel-title { font-size: 15px; font-weight: 700; letter-spacing: 0.3px; margin-bottom: 6px; }
+  .panel-sub { font-size: 12px; color: #9ca3af; margin-bottom: 20px; }
+
+  .panel.current .panel-title { color: #60a5fa; }
+  .panel.target  .panel-title { color: #34d399; }
+
+  .entity { background: #0d1117; border: 1px solid #21262d; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+  .entity-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .entity-name { font-size: 13px; font-weight: 700; color: #a5b4fc; font-family: 'JetBrains Mono', monospace; }
+  .entity-tag { font-size: 9px; padding: 2px 6px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
+  .tag-built  { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+  .tag-gap    { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+  .tag-partial{ background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
+
+  .field { font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.75; color: #c9d1d9; }
+  .field .k { color: #7c3aed; }
+  .field .t { color: #60a5fa; }
+  .field .n { color: #fbbf24; }
+  .field .c { color: #6b7280; font-style: italic; }
+  .field .new { background: rgba(34, 197, 94, 0.12); padding: 0 4px; border-radius: 3px; }
+  .field .miss { background: rgba(239, 68, 68, 0.12); padding: 0 4px; border-radius: 3px; text-decoration: line-through; text-decoration-color: rgba(239, 68, 68, 0.6); }
+
+  .rel { font-size: 10px; color: #6b7280; margin: -6px 0 6px 10px; font-family: 'JetBrains Mono', monospace; }
+
+  .legend { display: flex; gap: 16px; margin-top: 18px; padding-top: 16px; border-top: 1px solid #1f2937; font-size: 11px; color: #9ca3af; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+  .dot-built  { background: #4ade80; }
+  .dot-gap    { background: #f87171; }
+  .dot-partial{ background: #fbbf24; }
+
+  .flow { background: #0d1117; border: 1px solid #21262d; border-radius: 10px; padding: 14px 16px; margin-top: 10px; }
+  .flow-title { font-size: 11px; color: #7c3aed; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; margin-bottom: 10px; }
+  .step { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 7px; font-size: 11px; line-height: 1.5; font-family: 'JetBrains Mono', monospace; }
+  .step-num { width: 18px; height: 18px; border-radius: 4px; background: #1e293b; color: #a5b4fc; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 10px; flex-shrink: 0; }
+  .step-num.miss { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+  .step-text { color: #c9d1d9; }
+  .step-text .add { color: #4ade80; font-weight: 600; }
+  .step-text .rm { color: #f87171; text-decoration: line-through; }
+</style>
+</head><body>
+<div class="page">
+  <div class="page-title">Teams &amp; Billing — Current (as-built on main) vs. Target (Ryan's vision)</div>
+  <div class="page-sub">Green = already shipped. Red = gap vs. vision. Yellow = partially implemented / needs enforcement wiring.</div>
+
+  <div class="row">
+    <!-- CURRENT -->
+    <div class="panel current">
+      <div class="panel-title">CURRENT STATE</div>
+      <div class="panel-sub">codewithfabric/main, Prisma schema + team-helpers + team-invite</div>
+
+      <div class="entity">
+        <div class="entity-head">
+          <div class="entity-name">User</div>
+          <div class="entity-tag tag-built">built</div>
+        </div>
+        <div class="field">
+          <span class="k">id</span>               <span class="t">String</span><br>
+          <span class="k">email</span>            <span class="t">String</span> <span class="n">@unique</span><br>
+          <span class="k">balanceCents</span>     <span class="t">Int</span> <span class="c">// personal wallet</span><br>
+          <span class="k">stripeCustomerId</span> <span class="t">String?</span><br>
+          <span class="k">litellmUserId</span>    <span class="t">String?</span>
+        </div>
+      </div>
+
+      <div class="entity">
+        <div class="entity-head">
+          <div class="entity-name">Team</div>
+          <div class="entity-tag tag-built">built</div>
+        </div>
+        <div class="field">
+          <span class="k">id</span>                            <span class="t">String</span><br>
+          <span class="k">ownerId</span>                       <span class="t">String</span> <span class="c">// → User</span><br>
+          <span class="k">parentTeamId</span>                  <span class="t">String?</span> <span class="c">// hierarchy ✓</span><br>
+          <span class="k">balanceCents</span>                  <span class="t">Int</span> <span class="c">// team pool</span><br>
+          <span class="k">isUnlimited</span>                   <span class="t">Boolean</span><br>
+          <span class="k">unlimitedTier</span>                 <span class="t">UnlimitedTier?</span><br>
+          <span class="k">unlimitedCurrentPeriodEnd</span>     <span class="t">DateTime?</span><br>
+          <span class="k">subscriptionStatus</span>            <span class="t">SubscriptionStatus</span><br>
+          <span class="k">stripeUnlimitedSubscriptionId</span> <span class="t">String?</span>
+        </div>
+      </div>
+      <div class="rel">owner ⬌ Team.ownerId &nbsp; (owner is NOT a TeamMember row — synthesized)</div>
+
+      <div class="entity">
+        <div class="entity-head">
+          <div class="entity-name">TeamMember</div>
+          <div class="entity-tag tag-partial">built, not fully enforced</div>
+        </div>
+        <div class="field">
+          <span class="k">userId</span>                   <span class="t">String</span><br>
+          <span class="k">teamId</span>                   <span class="t">String</span><br>
+          <span class="k">role</span>                     <span class="t">TeamRole</span> <span class="c">// ADMIN | MEMBER</span><br>
+          <span class="k">billingProvider</span>          <span class="t">BillingProvider</span> <span class="c">// SELF | TEAM_OWNER</span><br>
+          <span class="k">isUnlimited</span>              <span class="t">Boolean</span><br>
+          <span class="k">stripeSubscriptionId</span>     <span class="t">String?</span><br>
+          <span class="k">monthlyLimitCents</span>        <span class="t">Int?</span><br>
+          <span class="k">currentMonthSpendCents</span>   <span class="t">Int</span><br>
+          <span class="k">budgetResetAt</span>            <span class="t">DateTime?</span><br>
+          <span class="k">rateLimitRpm</span>             <span class="t">Int</span>
+        </div>
+      </div>
+
+      <div class="flow">
+        <div class="flow-title">Balance resolution today — hasActiveSubscription()</div>
+        <div class="step"><div class="step-num">1</div><div class="step-text">member.isUnlimited &amp;&amp; !expired → ok</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">team.isUnlimited &amp;&amp; !expired → ok</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">team.balanceCents &gt; 0 → ok</div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-text">user.balanceCents &gt; 0 → ok</div></div>
+        <div class="step"><div class="step-num miss">?</div><div class="step-text" style="color:#f87171">per-member monthlyLimitCents cap is in the schema but enforcement at request time unverified</div></div>
+      </div>
+
+      <div class="flow">
+        <div class="flow-title">Team creation sites (today)</div>
+        <div class="step"><div class="step-num">✓</div><div class="step-text">stripe/webhooks → on first credit purchase</div></div>
+        <div class="step"><div class="step-num">✓</div><div class="step-text">balance.ts::addCredits</div></div>
+        <div class="step"><div class="step-num">✓</div><div class="step-text">provision-unlimited.ts → on Unlimited activation</div></div>
+        <div class="step"><div class="step-num miss">✗</div><div class="step-text" style="color:#f87171">signup / createUser event → no team created</div></div>
+      </div>
+    </div>
+
+    <!-- TARGET -->
+    <div class="panel target">
+      <div class="panel-title">TARGET STATE</div>
+      <div class="panel-sub">Ryan's vision — changes highlighted, same schema</div>
+
+      <div class="entity">
+        <div class="entity-head">
+          <div class="entity-name">User</div>
+          <div class="entity-tag tag-built">unchanged</div>
+        </div>
+        <div class="field">
+          <span class="k">id</span> <span class="t">String</span><br>
+          <span class="k">email</span> <span class="t">String</span><br>
+          <span class="k">balanceCents</span> <span class="t">Int</span> <span class="c">// still the personal wallet</span><br>
+          <span class="c">// invariant: always owns at least one Team (empty by default)</span>
+        </div>
+      </div>
+
+      <div class="entity">
+        <div class="entity-head">
+          <div class="entity-name">Team</div>
+          <div class="entity-tag tag-partial">guard needed</div>
+        </div>
+        <div class="field">
+          <span class="k">ownerId</span> <span class="t">String</span><br>
+          <span class="k">parentTeamId</span> <span class="t">String?</span> <span class="c">// already used by invite migration</span><br>
+          <span class="k">balanceCents</span> <span class="t">Int</span> <span class="c">// team pool, members draw via per-member caps</span><br>
+          <span class="k">isUnlimited</span> <span class="t">Boolean</span> <span class="new">required to invite members</span><br>
+          <span class="k">unlimitedCurrentPeriodEnd</span> <span class="t">DateTime?</span><br>
+          <span class="c">// new guard: api/team/invitations must 402 if !isUnlimited</span>
+        </div>
+      </div>
+
+      <div class="entity">
+        <div class="entity-head">
+          <div class="entity-name">TeamMember</div>
+          <div class="entity-tag tag-partial">schema ready, enforcement pending</div>
+        </div>
+        <div class="field">
+          <span class="k">userId</span> <span class="t">String</span><br>
+          <span class="k">billingProvider</span> <span class="t">SELF | TEAM_OWNER</span><br>
+          <span class="k">isUnlimited</span> <span class="t">Boolean</span> <span class="c">// owner-bought overrides member's own</span><br>
+          <span class="k">monthlyLimitCents</span> <span class="t">Int?</span> <span class="new">enforced at LiteLLM proxy</span><br>
+          <span class="k">currentMonthSpendCents</span> <span class="t">Int</span> <span class="new">incremented on every request</span><br>
+          <span class="k">budgetResetAt</span> <span class="t">DateTime?</span> <span class="new">monthly rollover</span>
+        </div>
+      </div>
+
+      <div class="flow">
+        <div class="flow-title">Balance resolution target — per-request decision order</div>
+        <div class="step"><div class="step-num">1</div><div class="step-text">member.isUnlimited &amp;&amp; !expired → member's own sub</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">team.isUnlimited &amp;&amp; !expired &amp;&amp; billingProvider=TEAM_OWNER → owner-paid</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">team.balanceCents &gt; 0 &amp;&amp; member.monthSpend &lt; member.monthlyLimit → team pool</div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-text">user.balanceCents &gt; 0 → personal wallet</div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-text">else → 402 insufficient_credits</div></div>
+      </div>
+
+      <div class="flow">
+        <div class="flow-title">Team creation sites (target)</div>
+        <div class="step"><div class="step-num">✓</div><div class="step-text">existing purchase/subscription paths (unchanged)</div></div>
+        <div class="step"><div class="step-num">+</div><div class="step-text" style="color:#4ade80">createUser event → auto-create empty Team ownerId=user.id</div></div>
+        <div class="step"><div class="step-num">+</div><div class="step-text" style="color:#4ade80">one-shot backfill script for existing users without a team</div></div>
+      </div>
+
+      <div class="flow">
+        <div class="flow-title">Cross-app alignment</div>
+        <div class="step"><div class="step-num">+</div><div class="step-text" style="color:#4ade80">monsurate copies findUserTeamId + hasActiveSubscription from team-helpers.ts</div></div>
+        <div class="step"><div class="step-num">+</div><div class="step-text" style="color:#4ade80">(future) extract to @fabric/team-helpers shared workspace package</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot dot-built"></div>already shipped on main</div>
+    <div class="legend-item"><div class="legend-dot dot-partial"></div>schema/code present, enforcement or wiring incomplete</div>
+    <div class="legend-item"><div class="legend-dot dot-gap"></div>gap vs. target — not yet built</div>
+  </div>
+</div>
+</body></html>

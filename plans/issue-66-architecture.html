@@ -1,0 +1,73 @@
+<link rel="stylesheet" href="../stylesheets/extra.css">
+<div class="diagram" style="max-width:900px">
+  <div class="diagram-title" style="font-size:16px;font-weight:700;text-align:center;margin-bottom:20px;color:#a5b4fc">Team Management API Architecture</div>
+
+  <!-- Top row: Client -->
+  <div style="text-align:center;margin-bottom:8px">
+    <div style="display:inline-block;background:#1f2937;border:1px solid #374151;padding:10px 32px;border-radius:8px;color:#9ca3af;font-size:13px;font-weight:600">CLIENT (Dashboard / Fabric App)</div>
+  </div>
+  <div style="text-align:center;margin-bottom:16px">
+    <div style="width:2px;height:20px;background:#374151;margin:0 auto"></div>
+    <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #374151;margin:0 auto"></div>
+  </div>
+
+  <!-- API Routes row -->
+  <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+    <div class="diagram-box main" style="flex:1;min-width:180px;margin-bottom:0">
+      <div class="diagram-box-title">GET /api/team/members</div>
+      <div class="diagram-steps">
+        <div class="diagram-step"><span class="diagram-step-text" style="font-size:12px">List all members + owner</span></div>
+        <div class="diagram-step"><span class="diagram-step-text" style="font-size:12px">Plan status & spend</span></div>
+      </div>
+    </div>
+    <div class="diagram-box main" style="flex:1;min-width:180px;margin-bottom:0">
+      <div class="diagram-box-title">PATCH/DEL /members/[id]</div>
+      <div class="diagram-steps">
+        <div class="diagram-step"><span class="diagram-step-text" style="font-size:12px">Role, rate limit, billing</span></div>
+        <div class="diagram-step"><span class="diagram-step-text" style="font-size:12px">Remove + cancel sub</span></div>
+      </div>
+    </div>
+    <div class="diagram-box main" style="flex:1;min-width:180px;margin-bottom:0">
+      <div class="diagram-box-title">POST /members/[id]/subscribe</div>
+      <div class="diagram-steps">
+        <div class="diagram-step"><span class="diagram-step-text" style="font-size:12px">One-click unlimited</span></div>
+        <div class="diagram-step"><span class="diagram-step-text" style="font-size:12px">Direct or checkout</span></div>
+      </div>
+    </div>
+    <div class="diagram-box renderer" style="flex:0.7;min-width:140px;margin-bottom:0">
+      <div class="diagram-box-title">PATCH /team/settings</div>
+      <div class="diagram-steps">
+        <div class="diagram-step"><span class="diagram-step-text" style="font-size:12px">Team name</span></div>
+        <div class="diagram-step"><span class="diagram-step-text" style="font-size:12px">Owner only</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth layer -->
+  <div style="text-align:center;margin-bottom:16px">
+    <div style="display:inline-block;background:linear-gradient(135deg,#78350f,#92400e);border:1px solid #d97706;padding:10px 40px;border-radius:8px">
+      <div style="color:#fcd34d;font-size:11px;font-weight:600;letter-spacing:1px">AUTH LAYER</div>
+      <div style="color:#fef3c7;font-size:12px;margin-top:4px">team-auth.ts → getTeamContext() + checkPermission()</div>
+    </div>
+  </div>
+
+  <!-- Bottom row: external services -->
+  <div style="display:flex;gap:12px;justify-content:center">
+    <div style="background:#1a1a2e;border:1px solid #4338ca;padding:12px 20px;border-radius:8px;text-align:center">
+      <div style="color:#a5b4fc;font-size:11px;font-weight:600">PRISMA</div>
+      <div style="color:#c7d2fe;font-size:12px">Team, TeamMember</div>
+    </div>
+    <div style="background:#1a2e1a;border:1px solid #16a34a;padding:12px 20px;border-radius:8px;text-align:center">
+      <div style="color:#86efac;font-size:11px;font-weight:600">STRIPE</div>
+      <div style="color:#dcfce7;font-size:12px">Subscriptions, Checkout</div>
+    </div>
+    <div style="background:#2e1a1a;border:1px solid #dc2626;padding:12px 20px;border-radius:8px;text-align:center">
+      <div style="color:#fca5a5;font-size:11px;font-weight:600">LITELLM</div>
+      <div style="color:#fecaca;font-size:12px">Key budget, rate limit</div>
+    </div>
+    <div style="background:#1f2937;border:1px solid #6b7280;padding:12px 20px;border-radius:8px;text-align:center">
+      <div style="color:#d1d5db;font-size:11px;font-weight:600">WEBHOOKS</div>
+      <div style="color:#e5e7eb;font-size:12px">forMemberId routing</div>
+    </div>
+  </div>
+</div>

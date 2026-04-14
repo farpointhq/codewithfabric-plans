@@ -754,10 +754,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#d3-where-does-the-owners-self-imposed-cap-on-the-team-pool-live" class="md-nav__link">
+  <a href="#d3-owner-self-cap-on-the-team-pool-deferred-yagni" class="md-nav__link">
     <span class="md-ellipsis">
       
-        D3. Where does the owner's self-imposed cap on the team pool live?
+        D3. Owner-self-cap on the team pool — deferred (YAGNI)
       
     </span>
   </a>
@@ -1084,10 +1084,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#d3-where-does-the-owners-self-imposed-cap-on-the-team-pool-live" class="md-nav__link">
+  <a href="#d3-owner-self-cap-on-the-team-pool-deferred-yagni" class="md-nav__link">
     <span class="md-ellipsis">
       
-        D3. Where does the owner's self-imposed cap on the team pool live?
+        D3. Owner-self-cap on the team pool — deferred (YAGNI)
       
     </span>
   </a>
@@ -1391,20 +1391,13 @@
 </tr>
 <tr>
 <td>6</td>
-<td>Add <code>Team.ownerMonthlyLimitCents</code> / <code>ownerCurrentMonthSpendCents</code> / <code>ownerBudgetResetAt</code> (schema only, no enforcement yet)</td>
-<td><code>codewithfabric</code></td>
-<td>Low</td>
-<td>D3, unblocks owner-cap UI whenever we build it</td>
-</tr>
-<tr>
-<td>7</td>
 <td>Verify &amp; document team-pool per-member cap enforcement at request time (Gap #5)</td>
 <td><code>codewithfabric</code> + LiteLLM</td>
 <td>Unknown</td>
 <td>Full behavior per D2 step 3</td>
 </tr>
 <tr>
-<td>8</td>
+<td>7</td>
 <td>Shared <code>@fabric/team-helpers</code> workspace package</td>
 <td>Both</td>
 <td>Medium</td>
@@ -1412,7 +1405,8 @@
 </tr>
 </tbody>
 </table>
-<p>Steps 1–2 are tonight. Steps 3/4/5/6 are small PRs, each can be a separate issue. Step 7 needs investigation first. Step 8 is a future refactor we can defer indefinitely — the literal copy from step 2 is <em>fine</em> as long as we keep the two functions small and well-commented.</p>
+<p>Steps 1–2 are tonight. Steps 3/4/5 are small PRs, each a separate issue. Step 6 needs investigation first. Step 7 is a future refactor we can defer indefinitely — the literal copy from step 2 is <em>fine</em> as long as we keep the two functions small and well-commented.</p>
+<p><strong>Removed from an earlier draft:</strong> adding <code>Team.ownerMonthlyLimitCents</code> + two sibling fields to support "owner can cap their own draw from the team pool". See D3 — deferred as YAGNI. Uncapped owner draw is fine.</p>
 <h2 id="decisions-answered-2026-04-13">Decisions (answered 2026-04-13)<a class="headerlink" href="#decisions-answered-2026-04-13" title="Permanent link">¶</a></h2>
 <h3 id="d1-owner-is-not-a-teammember-convention-preserved">D1. Owner is not a TeamMember (convention preserved)<a class="headerlink" href="#d1-owner-is-not-a-teammember-convention-preserved" title="Permanent link">¶</a></h3>
 <p><strong>Decision:</strong> Keep the current convention. The team owner is recorded via <code>Team.ownerId</code>, <em>not</em> as a <code>TeamMember</code> row. <code>TeamMember</code> and "team owner" are distinct concepts.</p>
@@ -1430,22 +1424,16 @@
 <a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>For the team owner (no TeamMember row, so step 1 reads user-level fields):
 <a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>  1. user-level personal Unlimited if they separately bought one  (unusual)
 <a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>  2. team.isUnlimited &amp;&amp; !expired        → they're covered — they bought it
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>  3. team.balanceCents &gt; 0 &amp;&amp; owner cap  → draw team pool (see D3)
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>  3. team.balanceCents &gt; 0                → draw team pool (uncapped, see D3)
 <a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>  4. user.balanceCents  &gt; 0              → personal wallet, LAST RESORT
 <a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>  5. else                                → 402
 </code></pre></div>
 <p>This matches what <code>hasActiveSubscription</code> does today for steps 1/2/4, plus the schema-ready-but-unenforced step 3 (Gap #5).</p>
-<h3 id="d3-where-does-the-owners-self-imposed-cap-on-the-team-pool-live">D3. Where does the owner's self-imposed cap on the team pool live?<a class="headerlink" href="#d3-where-does-the-owners-self-imposed-cap-on-the-team-pool-live" title="Permanent link">¶</a></h3>
-<p>Ryan's vision: "even the owner can set their own limit on the team balance, optionally". Since the owner is deliberately <em>not</em> a <code>TeamMember</code> row, <code>TeamMember.monthlyLimitCents</code> doesn't apply to them.</p>
-<p><strong>Proposed schema addition (small, additive):</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>model Team {
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  // ... existing ...
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  ownerMonthlyLimitCents      Int?
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  ownerCurrentMonthSpendCents Int       @default(0)
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>  ownerBudgetResetAt          DateTime?
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>}
-</code></pre></div>
-<p>Mirrors the <code>TeamMember</code> budget trio one-to-one but scoped to the owner. All nullable/defaulted, so no migration pain for existing teams. The enforcement path is the same as Gap #5 (deferred until we know how the LiteLLM proxy hooks into request metering).</p>
+<h3 id="d3-owner-self-cap-on-the-team-pool-deferred-yagni">D3. Owner-self-cap on the team pool — <strong>deferred (YAGNI)</strong><a class="headerlink" href="#d3-owner-self-cap-on-the-team-pool-deferred-yagni" title="Permanent link">¶</a></h3>
+<p>Ryan's original phrasing: "even the owner can use from the team balance and they can set their own limit <strong>or maybe they have no limit since they're the owner</strong>. let's just let them <strong>optionally</strong> set a limit for themselves as well." The "or maybe no limit" + "optionally" was already signaling want-nice, not must-have.</p>
+<p>An earlier draft of this plan proposed adding <code>Team.ownerMonthlyLimitCents</code> / <code>ownerCurrentMonthSpendCents</code> / <code>ownerBudgetResetAt</code> — three new fields mirroring the <code>TeamMember</code> budget trio but scoped to the owner. That's pure duplication driven by "owner is not a member" (D1), and the smell triggered a sanity check.</p>
+<p><strong>Decision:</strong> <strong>don't build it.</strong> Owner-draw from the team pool is uncapped. If a real user ever asks for owner-self-capping, we revisit — and revisit <em>properly</em>, by deciding whether to (a) add the mirrored fields, or (b) collapse owner into <code>TeamMember</code> with a new <code>OWNER</code> role and get one uniform code path. Accumulating ad-hoc fields on <code>Team</code> to defer that decision is worse than deferring the feature.</p>
+<p><strong>Implication for D2's resolution order:</strong> step 3 for the owner simplifies from "team pool with owner cap" to just "team pool, no cap" — the owner can burn the entire <code>Team.balanceCents</code> in one request if they want. That's fine.</p>
 <h3 id="d4-no-grandfathering-needed-for-the-unlimited-required-to-invite-guard">D4. No grandfathering needed for the "Unlimited required to invite" guard<a class="headerlink" href="#d4-no-grandfathering-needed-for-the-unlimited-required-to-invite-guard" title="Permanent link">¶</a></h3>
 <p>Existing teams with members are effectively a subset of Unlimited teams (you verified this anecdotally — go.team, Regs, etc. all have Unlimited). We can land Gap #4 as a hard 402 on invitation creation without grandfathering. If a non-Unlimited team with members is ever found later, we'll handle it as a one-off.</p>
 <h3 id="d5-monsurate-credit-purchase-ux-stay-bounced-but-sender-aware-billing-page">D5. monsurate credit purchase UX → stay bounced, but sender-aware billing page<a class="headerlink" href="#d5-monsurate-credit-purchase-ux-stay-bounced-but-sender-aware-billing-page" title="Permanent link">¶</a></h3>

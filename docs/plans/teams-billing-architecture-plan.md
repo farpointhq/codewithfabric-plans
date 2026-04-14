@@ -167,11 +167,12 @@ if (!team.isUnlimited || !team.unlimitedCurrentPeriodEnd || team.unlimitedCurren
 | 3 | Auto-create empty team on signup (event + backfill) | `codewithfabric` | Low-medium | D1, vision invariant "everyone has a team" |
 | 4 | "Inviting requires Unlimited" guard | `codewithfabric` | Low | D4, no grandfathering |
 | 5 | Sender-aware context banner on `/dashboard/billing` + `?sender=` redirect from monsurate | `codewithfabric` + `monsurate.com` | Low | D5, eliminates the "why am I on codewithfabric?" surprise |
-| 6 | Add `Team.ownerMonthlyLimitCents` / `ownerCurrentMonthSpendCents` / `ownerBudgetResetAt` (schema only, no enforcement yet) | `codewithfabric` | Low | D3, unblocks owner-cap UI whenever we build it |
-| 7 | Verify & document team-pool per-member cap enforcement at request time (Gap #5) | `codewithfabric` + LiteLLM | Unknown | Full behavior per D2 step 3 |
-| 8 | Shared `@fabric/team-helpers` workspace package | Both | Medium | Eliminates copy-paste from step 2 |
+| 6 | Verify & document team-pool per-member cap enforcement at request time (Gap #5) | `codewithfabric` + LiteLLM | Unknown | Full behavior per D2 step 3 |
+| 7 | Shared `@fabric/team-helpers` workspace package | Both | Medium | Eliminates copy-paste from step 2 |
 
-Steps 1–2 are tonight. Steps 3/4/5/6 are small PRs, each can be a separate issue. Step 7 needs investigation first. Step 8 is a future refactor we can defer indefinitely — the literal copy from step 2 is *fine* as long as we keep the two functions small and well-commented.
+Steps 1–2 are tonight. Steps 3/4/5 are small PRs, each a separate issue. Step 6 needs investigation first. Step 7 is a future refactor we can defer indefinitely — the literal copy from step 2 is *fine* as long as we keep the two functions small and well-commented.
+
+**Removed from an earlier draft:** adding `Team.ownerMonthlyLimitCents` + two sibling fields to support "owner can cap their own draw from the team pool". See D3 — deferred as YAGNI. Uncapped owner draw is fine.
 
 ## Decisions (answered 2026-04-13)
 
@@ -198,29 +199,22 @@ For a member of a team:
 For the team owner (no TeamMember row, so step 1 reads user-level fields):
   1. user-level personal Unlimited if they separately bought one  (unusual)
   2. team.isUnlimited && !expired        → they're covered — they bought it
-  3. team.balanceCents > 0 && owner cap  → draw team pool (see D3)
+  3. team.balanceCents > 0                → draw team pool (uncapped, see D3)
   4. user.balanceCents  > 0              → personal wallet, LAST RESORT
   5. else                                → 402
 ```
 
 This matches what `hasActiveSubscription` does today for steps 1/2/4, plus the schema-ready-but-unenforced step 3 (Gap #5).
 
-### D3. Where does the owner's self-imposed cap on the team pool live?
+### D3. Owner-self-cap on the team pool — **deferred (YAGNI)**
 
-Ryan's vision: "even the owner can set their own limit on the team balance, optionally". Since the owner is deliberately *not* a `TeamMember` row, `TeamMember.monthlyLimitCents` doesn't apply to them.
+Ryan's original phrasing: "even the owner can use from the team balance and they can set their own limit **or maybe they have no limit since they're the owner**. let's just let them **optionally** set a limit for themselves as well." The "or maybe no limit" + "optionally" was already signaling want-nice, not must-have.
 
-**Proposed schema addition (small, additive):**
+An earlier draft of this plan proposed adding `Team.ownerMonthlyLimitCents` / `ownerCurrentMonthSpendCents` / `ownerBudgetResetAt` — three new fields mirroring the `TeamMember` budget trio but scoped to the owner. That's pure duplication driven by "owner is not a member" (D1), and the smell triggered a sanity check.
 
-```prisma
-model Team {
-  // ... existing ...
-  ownerMonthlyLimitCents      Int?
-  ownerCurrentMonthSpendCents Int       @default(0)
-  ownerBudgetResetAt          DateTime?
-}
-```
+**Decision:** **don't build it.** Owner-draw from the team pool is uncapped. If a real user ever asks for owner-self-capping, we revisit — and revisit *properly*, by deciding whether to (a) add the mirrored fields, or (b) collapse owner into `TeamMember` with a new `OWNER` role and get one uniform code path. Accumulating ad-hoc fields on `Team` to defer that decision is worse than deferring the feature.
 
-Mirrors the `TeamMember` budget trio one-to-one but scoped to the owner. All nullable/defaulted, so no migration pain for existing teams. The enforcement path is the same as Gap #5 (deferred until we know how the LiteLLM proxy hooks into request metering).
+**Implication for D2's resolution order:** step 3 for the owner simplifies from "team pool with owner cap" to just "team pool, no cap" — the owner can burn the entire `Team.balanceCents` in one request if they want. That's fine.
 
 ### D4. No grandfathering needed for the "Unlimited required to invite" guard
 

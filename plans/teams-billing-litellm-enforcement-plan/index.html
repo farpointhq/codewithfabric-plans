@@ -85,7 +85,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#teams-billing-litellm-per-member-cap-enforcement-plan" class="md-skip">
+        <a href="#teams-billing-litellm-enforcement-plan-budget-caps-tier-access" class="md-skip">
           Skip to content
         </a>
       
@@ -565,6 +565,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#two-enforcement-dimensions-scope-expansion-2026-04-15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two enforcement dimensions (scope expansion — 2026-04-15)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#current-state-investigation-2026-04-14" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -811,6 +822,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#two-enforcement-dimensions-scope-expansion-2026-04-15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two enforcement dimensions (scope expansion — 2026-04-15)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#current-state-investigation-2026-04-14" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1020,14 +1042,38 @@
 
 
 
-<h1 id="teams-billing-litellm-per-member-cap-enforcement-plan">Teams Billing — LiteLLM Per-Member Cap Enforcement Plan<a class="headerlink" href="#teams-billing-litellm-per-member-cap-enforcement-plan" title="Permanent link">¶</a></h1>
+<h1 id="teams-billing-litellm-enforcement-plan-budget-caps-tier-access">Teams Billing — LiteLLM Enforcement Plan (Budget Caps + Tier Access)<a class="headerlink" href="#teams-billing-litellm-enforcement-plan-budget-caps-tier-access" title="Permanent link">¶</a></h1>
 <blockquote>
 <p>Step 6 of the <a href="../teams-billing-architecture-plan/">teams-billing architecture plan</a>.
-Written: 2026-04-15. Status: DRAFT — awaiting Ryan approval before any code lands.</p>
+Written: 2026-04-15. Status: DRAFT — awaiting Ryan approval before any code lands.
+<strong>Scope expanded 2026-04-15</strong> to also cover tier-access leak (see "Two enforcement dimensions" below).</p>
 </blockquote>
 <h2 id="tldr">TL;DR<a class="headerlink" href="#tldr" title="Permanent link">¶</a></h2>
-<p><code>TeamMember.monthlyLimitCents</code> is theater — it's saved, displayed, and logged post-hoc, but the LiteLLM proxy never learns about it. A member with a $50 cap can burn $5,000 and all they get is a <code>console.warn</code>. This plan wires the field to LiteLLM's native <code>max_budget</code> enforcement, with a three-stage rollout that uses LiteLLM's <code>soft_budget</code> field as the built-in shadow phase — meaning we get alerts-only observability before enforcement without any app-level fail-open hacks.</p>
+<p><code>TeamMember.monthlyLimitCents</code> is theater — it's saved, displayed, and logged post-hoc, but the LiteLLM proxy never learns about it. A member with a $50 cap can burn $5,000 and all they get is a <code>console.warn</code>. <strong>Separately but through the same broken wiring</strong>, every LiteLLM key is born with <code>models: []</code> meaning no tier restriction — a MEDIUM-plan customer can call <code>fabric-large</code> unrestricted. This plan wires BOTH gaps to LiteLLM's native enforcement (one pass through the same 3 call sites), with a three-stage rollout that uses LiteLLM's <code>soft_budget</code> field as the built-in shadow phase for budget enforcement and an app-level log-only branch for the tier-access shadow.</p>
 <p><strong>Hard constraint (non-negotiable):</strong> production has real paying users. We never ship a change that can false-positive block them. Every stage is reversible; the enforcement flip happens only after the shadow stage shows zero false-positive candidates.</p>
+<h2 id="two-enforcement-dimensions-scope-expansion-2026-04-15">Two enforcement dimensions (scope expansion — 2026-04-15)<a class="headerlink" href="#two-enforcement-dimensions-scope-expansion-2026-04-15" title="Permanent link">¶</a></h2>
+<p><a class="glightbox" data-type="image" data-width="100%" data-height="auto" href="../teams-billing-step6-two-dimensions.png" data-desc-position="bottom"><img alt="Two enforcement dimensions — every LiteLLM key has a budget cap AND a model allow-list, both broken" src="../teams-billing-step6-two-dimensions.png"></a></p>
+<p>While investigating the budget-cap wiring, a second enforcement gap surfaced: <strong><code>billing.ts::getAllowedModelsForTier</code></strong> (line 68) is a complete helper that returns the correct per-tier model whitelist and whose own comment says <em>"used to restrict LiteLLM API keys at the proxy level"</em> — but the function is <strong>never called anywhere</strong>. Dead code. The intent was to wire <code>models: ["fabric-small", "fabric-medium"]</code> into <code>litellm.generateKey</code>/<code>updateKey</code> for MEDIUM-tier members, but that wiring was never completed.</p>
+<p><strong>Empirically verified on prod (2026-04-15):</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>user: devin.durrant@gmail.com  (unlimitedTier = MEDIUM)
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>key 454b846af04919:  models=[]  max_budget=None  soft_budget=None
+</code></pre></div>
+<p>Devin is on a Medium plan. His key has no model restriction and no budget cap. He can call <code>fabric-large</code> right now and the only response from our system is a post-hoc <code>shouldDecrementBalance</code> entry in the callback handler that tries to charge pay-as-you-go rates — the actual inference already happened. This is a leak, not a billing error.</p>
+<p><strong>Blast radius today: 2 customer accounts on sub-LARGE Unlimited plans:</strong></p>
+<ul>
+<li><code>ryan@monsurate.com</code> (Ryan — self, ideal first test subject)</li>
+<li><code>devin.durrant@gmail.com</code> (real paying customer — coordinate directly before stage 3 flip)</li>
+</ul>
+<p>Every other Unlimited account is LARGE, meaning no model restriction to apply.</p>
+<p><strong>Why fold this into step 6 instead of a separate plan:</strong></p>
+<ul>
+<li>Same call sites — <code>litellm.generateKey</code>/<code>updateKey</code> already accept a <code>models: string[]</code> parameter, it's the same 2+1 locations as the budget wiring</li>
+<li>Same rollout shape — wire → shadow → enforce, same three stages, same env-var rollback</li>
+<li>Same constraint — "no false positives on paying users" applies identically</li>
+<li>Same infrastructure — LiteLLM proxy, same key records, same reconciliation cron</li>
+<li>The dead code (<code>getAllowedModelsForTier</code>) already exists. We are completing someone's half-built work, not inventing something new.</li>
+</ul>
+<p><strong>The one asymmetry:</strong> LiteLLM has no native "soft_models" analog to <code>soft_budget</code>. The tier-access shadow stage has to be app-level — extend <code>/api/litellm/callback</code> to detect "member called a model outside their tier", log a <code>BudgetAlert</code> row with <code>kind = TIER_LEAK</code>, and don't add a pre-request gate until stage 3. Budget caps and tier access use the same rollout gates but different shadow mechanisms.</p>
 <p><a class="glightbox" data-type="image" data-width="100%" data-height="auto" href="../teams-billing-step6-current-vs-target.png" data-desc-position="bottom"><img alt="Current vs Target data flow — why monthlyLimitCents is theater today and what wiring it looks like after step 6" src="../teams-billing-step6-current-vs-target.png"></a></p>
 <h2 id="current-state-investigation-2026-04-14">Current state (investigation, 2026-04-14)<a class="headerlink" href="#current-state-investigation-2026-04-14" title="Permanent link">¶</a></h2>
 <p><strong>What works:</strong></p>
@@ -1054,7 +1100,8 @@ Written: 2026-04-15. Status: DRAFT — awaiting Ryan approval before any code la
 <li>LiteLLM supports <code>soft_budget</code> (alert webhooks, no block), <code>max_budget</code> (hard block), and <code>budget_duration</code> (auto-reset cadence) natively on keys.</li>
 <li><code>_PROXY_MaxBudgetPerSessionHandler</code> is also loaded if we ever want per-session limits.</li>
 </ul>
-<p><strong>Blast radius today: zero.</strong> The only team with members is Farpoint HQ (owned by <code>ryan@farpointhq.com</code>, 8 employee members added 2026-04-14). No one has <code>monthlyLimitCents</code> set. This means stages 1 and 2 can ship without affecting a single customer. Stage 3 (the enforcement flip) also ships affecting nobody until an owner explicitly sets a cap on someone, because we default <code>max_budget: null</code> at key creation.</p>
+<p><strong>Blast radius today — budget dimension: zero.</strong> The only team with members is Farpoint HQ (owned by <code>ryan@farpointhq.com</code>, 8 employee members added 2026-04-14). No one has <code>monthlyLimitCents</code> set. Stages 1 and 2 ship without affecting a single customer on the budget dimension. Stage 3 ships affecting nobody on budget until an owner explicitly sets a cap.</p>
+<p><strong>Blast radius today — tier dimension: 2 customer accounts.</strong> <code>ryan@monsurate.com</code> (self) and <code>devin.durrant@gmail.com</code> are on MEDIUM Unlimited. Their keys currently have <code>models: []</code> (unrestricted). Stage 3 on the tier dimension will affect exactly these 2 keys. Ryan is the natural first test subject; Devin requires out-of-band coordination before the flip.</p>
 <h2 id="architecture-three-stage-rollout">Architecture: three-stage rollout<a class="headerlink" href="#architecture-three-stage-rollout" title="Permanent link">¶</a></h2>
 <p><a class="glightbox" data-type="image" data-width="100%" data-height="auto" href="../teams-billing-step6-rollout-stages.png" data-desc-position="bottom"><img alt="Three-stage rollout plan — wiring, shadow, enforce — with hard gates between each stage" src="../teams-billing-step6-rollout-stages.png"></a></p>
 <p>Each stage is an independent PR, reviewed separately, with its own rollback path.</p>
@@ -1065,38 +1112,48 @@ Written: 2026-04-15. Status: DRAFT — awaiting Ryan approval before any code la
 <p><strong>Goal:</strong> the code learns to push budget values to LiteLLM, but every value it pushes during stage 1 is either <code>null</code> (no change) or matches what's already in the DB. No enforcement changes. This stage is deployable at any time; it cannot affect a single user.</p>
 <p><strong>Changes:</strong></p>
 <ol>
-<li><strong>Extend <code>lib/litellm.ts</code></strong> — <code>generateKey</code> and <code>updateKey</code> already accept <code>maxBudget</code>; add <code>softBudget</code>, <code>budgetDuration</code>, and <code>budgetResetAt</code> pass-throughs.</li>
-<li><strong>Wire <code>maxBudget</code> at key generation</strong> (two sites):<ul>
-<li><code>src/app/api/team/invitations/[token]/accept/route.ts:77</code> — pass <code>maxBudget: member.monthlyLimitCents != null ? member.monthlyLimitCents / 100 : undefined</code></li>
-<li><code>src/app/api/keys/generate/route.ts:52</code> — same
-Both paths will, in practice, pass <code>undefined</code> for stage 1 because no member has a cap set. This is deliberate — we're testing that the plumbing works, not flipping enforcement.</li>
+<li><strong>Extend <code>lib/litellm.ts</code></strong> — <code>generateKey</code> and <code>updateKey</code> already accept <code>maxBudget</code> and <code>models</code>; add <code>softBudget</code>, <code>budgetDuration</code>, and <code>budgetResetAt</code> pass-throughs. Everything else is already in the signature.</li>
+<li><strong>Wire <code>maxBudget</code> AND <code>models</code> at key generation</strong> (two sites):<ul>
+<li><code>src/app/api/team/invitations/[token]/accept/route.ts:77</code> — pass both:
+  <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">const</span><span class="w"> </span><span class="nx">tier</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">member</span><span class="p">.</span><span class="nx">unlimitedTier</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="nx">team</span><span class="p">.</span><span class="nx">unlimitedTier</span><span class="p">;</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kd">const</span><span class="w"> </span><span class="nx">models</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">tier</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="nx">getAllowedModelsForTier</span><span class="p">(</span><span class="nx">tier</span><span class="p">)</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="nx">undefined</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="kt">undefined</span><span class="p">;</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">await</span><span class="w"> </span><span class="nx">litellm</span><span class="p">.</span><span class="nx">generateKey</span><span class="p">({</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nx">userId</span><span class="p">,</span><span class="w"> </span><span class="nx">keyName</span><span class="p">,</span><span class="w"> </span><span class="nx">teamId</span><span class="p">,</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nx">maxBudget</span><span class="o">:</span><span class="w"> </span><span class="kt">member.monthlyLimitCents</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="nx">member</span><span class="p">.</span><span class="nx">monthlyLimitCents</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nx">100</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="kt">undefined</span><span class="p">,</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nx">models</span><span class="p">,</span><span class="w">  </span><span class="c1">// undefined = no restriction (LARGE), array = restricted to named models</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">});</span>
+</code></pre></div></li>
+<li><code>src/app/api/keys/generate/route.ts:52</code> — same pattern
+Both paths will, in practice, pass <code>undefined</code> for <strong>budget</strong> during stage 1 (nobody has caps), but <strong>models</strong> will begin taking effect for new Medium-tier keys minted after stage 1 ships. Since Medium-tier key generation is rare (2 accounts total, both already have keys), this is low-risk — but see the stage 1 shadow note below.</li>
 </ul>
 </li>
-<li><strong>Wire <code>maxBudget</code> sync on cap update</strong> — add a block in <code>PATCH /api/team/members/[memberId]</code> mirroring the existing <code>rateLimitRpm</code> sync around line 157:
-    <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">body</span><span class="p">.</span><span class="nx">monthlyLimitCents</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="kc">undefined</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="k">try</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">apiKey</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">prisma</span><span class="p">.</span><span class="nx">apiKey</span><span class="p">.</span><span class="nx">findUnique</span><span class="p">({</span><span class="w"> </span><span class="nx">where</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">userId</span><span class="o">:</span><span class="w"> </span><span class="kt">member.userId</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">});</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">apiKey</span><span class="o">?</span><span class="p">.</span><span class="nx">litellmKeyId</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">      </span><span class="k">await</span><span class="w"> </span><span class="nx">litellm</span><span class="p">.</span><span class="nx">updateKey</span><span class="p">({</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">        </span><span class="nx">key</span><span class="o">:</span><span class="w"> </span><span class="kt">apiKey.litellmKeyId</span><span class="p">,</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">        </span><span class="nx">maxBudget</span><span class="o">:</span><span class="w"> </span><span class="kt">body.monthlyLimitCents</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="nx">body</span><span class="p">.</span><span class="nx">monthlyLimitCents</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nx">100</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="kt">null</span><span class="p">,</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">      </span><span class="p">});</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="nx">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s2">"Failed to sync monthly limit to LiteLLM:"</span><span class="p">,</span><span class="w"> </span><span class="nx">error</span><span class="p">);</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">    </span><span class="c1">// Fail-open: the DB update already succeeded; log and move on.</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">  </span><span class="p">}</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="p">}</span>
+<li><strong>Wire <code>maxBudget</code> AND <code>models</code> sync on update</strong> — add a block in <code>PATCH /api/team/members/[memberId]</code> mirroring the existing <code>rateLimitRpm</code> sync around line 157. Triggered when <code>body.monthlyLimitCents</code> OR <code>body.unlimitedTier</code> changes:
+    <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">body</span><span class="p">.</span><span class="nx">monthlyLimitCents</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="kc">undefined</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="k">try</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">apiKey</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">prisma</span><span class="p">.</span><span class="nx">apiKey</span><span class="p">.</span><span class="nx">findUnique</span><span class="p">({</span><span class="w"> </span><span class="nx">where</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">userId</span><span class="o">:</span><span class="w"> </span><span class="kt">member.userId</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">});</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">apiKey</span><span class="o">?</span><span class="p">.</span><span class="nx">litellmKeyId</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">      </span><span class="k">await</span><span class="w"> </span><span class="nx">litellm</span><span class="p">.</span><span class="nx">updateKey</span><span class="p">({</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">        </span><span class="nx">key</span><span class="o">:</span><span class="w"> </span><span class="kt">apiKey.litellmKeyId</span><span class="p">,</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">        </span><span class="nx">maxBudget</span><span class="o">:</span><span class="w"> </span><span class="kt">body.monthlyLimitCents</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="nx">body</span><span class="p">.</span><span class="nx">monthlyLimitCents</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nx">100</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="kt">null</span><span class="p">,</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">      </span><span class="p">});</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="nx">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s2">"Failed to sync monthly limit to LiteLLM:"</span><span class="p">,</span><span class="w"> </span><span class="nx">error</span><span class="p">);</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">    </span><span class="c1">// Fail-open: the DB update already succeeded; log and move on.</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="p">}</span>
 </code></pre></div>
     Fail-open: if LiteLLM is unreachable, the DB is still the source of truth and the next reconciliation pass fixes drift.</li>
-<li><strong>Backfill script</strong> — <code>scripts/backfill-litellm-max-budget.ts</code>:<ul>
-<li>For every <code>TeamMember</code> row with non-null <code>monthlyLimitCents</code>, push <code>maxBudget</code> to their current LiteLLM key via <code>litellm.updateKey</code>.</li>
+<li><strong>Backfill script</strong> — <code>scripts/backfill-litellm-enforcement.ts</code>:<ul>
+<li>For every <code>TeamMember</code> row: push <code>maxBudget</code> (if non-null) AND <code>models</code> (per current tier) to their LiteLLM key via <code>litellm.updateKey</code>.</li>
+<li>For every <code>ApiKey</code> owned by a user whose team is Unlimited at a sub-LARGE tier: same.</li>
 <li>Idempotent. Re-running is a no-op.</li>
-<li>Today, this script finds <strong>zero rows</strong> to update. It's scaffolding for the day someone sets a cap.</li>
+<li>Today, the budget side of the script finds <strong>zero rows</strong> to update, but the models side affects <strong>2 keys</strong> (Ryan's and Devin's). <strong>Critical:</strong> running the backfill ships tier enforcement without the shadow phase unless we gate the models update on <code>LITELLM_BUDGET_MODE != off</code>.</li>
 </ul>
 </li>
+<li><strong>Important asymmetry in stage 1:</strong> because <code>getAllowedModelsForTier("MEDIUM")</code> returns <code>["fabric-small", "fabric-medium"]</code>, any key we write with those models becomes <em>immediately enforcing</em> at the proxy — there is no <code>soft_models</code> field. We must NOT apply the models field during stage 1. Stage 1 wires the plumbing for models only at new-key creation for NEW users (of which there will be ~zero today, and any new signup won't have an Unlimited tier yet). Stage 1's backfill script is budget-only until stage 2.</li>
 </ol>
-<p><strong>Ship criterion:</strong> plan approved, PR green, preview test confirms key generation on a freshly-invited test member still works end-to-end.</p>
+<p><strong>Ship criterion:</strong> plan approved, PR green, preview test confirms key generation on a freshly-invited test member still works end-to-end (budget side is null, models side is null for a new user with no tier yet).</p>
 <p><strong>Rollback:</strong> revert the PR. No DB or LiteLLM state changes to undo since all the values we'd push during stage 1 are <code>null</code>.</p>
 <h3 id="stage-2-shadow-soft_budget-only">Stage 2 — Shadow (soft_budget only)<a class="headerlink" href="#stage-2-shadow-soft_budget-only" title="Permanent link">¶</a></h3>
 <p><strong>Goal:</strong> capture "would have blocked" telemetry without blocking. This is the observation window that proves we won't false-positive anyone in stage 3.</p>
@@ -1104,10 +1161,43 @@ Both paths will, in practice, pass <code>undefined</code> for stage 1 because no
 <p><strong>Changes:</strong></p>
 <ol>
 <li><strong>Flag-gated stage</strong> — introduce <code>LITELLM_BUDGET_MODE</code> env var with values <code>off</code> (stage 1 default), <code>shadow</code> (stage 2), <code>enforce</code> (stage 3).</li>
-<li><strong>In <code>stage=shadow</code>:</strong> when pushing a cap to LiteLLM, send <code>soft_budget: cents / 100</code> instead of <code>max_budget</code>. Leave <code>max_budget: null</code>.</li>
-<li><strong>Wire the <code>/api/litellm/budget-alerts</code> webhook</strong> (new route) to receive soft-budget alerts from LiteLLM. Store each alert in a new <code>BudgetAlert</code> table (<code>id, memberId, teamId, keyHash, spendCents, thresholdCents, firedAt, stage, wouldHaveBlocked: true</code>). Also log to Slack <code>#billing-alerts</code>.</li>
-<li><strong>Dashboard widget</strong> — "Members approaching / over their monthly limit" with alert history. Team owner only. Read-only.</li>
-<li><strong>Shadow criterion for flipping to stage 3:</strong> N days (concrete value TBD — see <strong>Open decision 1</strong>) with at least one member having a real cap set, producing zero alerts that would have been false positives. "False positive" = an alert fired on a member who still had budget headroom at the time of the request, per our reconciliation logic.</li>
+<li><strong>Budget shadow (native):</strong> when pushing a cap to LiteLLM, send <code>soft_budget: cents / 100</code> instead of <code>max_budget</code>. Leave <code>max_budget: null</code>. LiteLLM fires <code>budget_alerts</code> webhook, nothing blocks.</li>
+<li><strong>Tier-access shadow (app-level, because no native analog):</strong> leave LiteLLM key <code>models</code> field as <code>[]</code> but extend <code>/api/litellm/callback</code> to detect tier violations in the already-received usage records:
+    <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1">// New branch in callback handler</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kd">const</span><span class="w"> </span><span class="nx">effectiveTier</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">higherTier</span><span class="p">(</span><span class="nx">team</span><span class="p">.</span><span class="nx">unlimitedTier</span><span class="p">,</span><span class="w"> </span><span class="nx">member</span><span class="o">?</span><span class="p">.</span><span class="nx">unlimitedTier</span><span class="p">);</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">effectiveTier</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="nx">isModelCoveredByTier</span><span class="p">(</span><span class="nx">model</span><span class="p">,</span><span class="w"> </span><span class="nx">effectiveTier</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="k">await</span><span class="w"> </span><span class="nx">prisma</span><span class="p">.</span><span class="nx">budgetAlert</span><span class="p">.</span><span class="nx">create</span><span class="p">({</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="nx">data</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">memberId</span><span class="o">:</span><span class="w"> </span><span class="kt">member.id</span><span class="p">,</span><span class="w"> </span><span class="nx">teamId</span><span class="o">:</span><span class="w"> </span><span class="kt">team.id</span><span class="p">,</span><span class="w"> </span><span class="nx">kind</span><span class="o">:</span><span class="w"> </span><span class="s2">"TIER_LEAK"</span><span class="p">,</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">            </span><span class="nx">model</span><span class="p">,</span><span class="w"> </span><span class="nx">tierAtTime</span><span class="o">:</span><span class="w"> </span><span class="kt">effectiveTier</span><span class="p">,</span><span class="w"> </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="s2">"SHADOW"</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span><span class="p">});</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">  </span><span class="c1">// Also Slack notify</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="p">}</span>
+</code></pre></div>
+    This fires a row (and Slack message) when a Medium-tier user calls fabric-large — but the request has already succeeded. It's logging-only, exactly what we want from shadow mode.</li>
+<li><strong>Wire the <code>/api/litellm/budget-alerts</code> webhook</strong> (new route) to receive soft-budget alerts from LiteLLM. Store each alert in the same <code>BudgetAlert</code> table with <code>kind = "BUDGET_SOFT"</code>.</li>
+<li><strong>New <code>BudgetAlert</code> Prisma model:</strong>
+    <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>model BudgetAlert {
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  id             String   @id @default(cuid())
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  kind           AlertKind  // BUDGET_SOFT | BUDGET_HARD | TIER_LEAK
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  stage          String     // SHADOW | ENFORCE
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>  memberId       String?
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>  teamId         String
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>  keyHash        String?    // last 14 chars of LiteLLM key token
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>  model          String?    // tier-leak: which model was called
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>  tierAtTime     String?    // tier-leak: what tier they had
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>  spendCents     Int?       // budget-soft: how much they'd spent
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>  thresholdCents Int?       // budget-soft: what the cap was
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>  firedAt        DateTime @default(now())
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>}
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>enum AlertKind { BUDGET_SOFT BUDGET_HARD TIER_LEAK }
+</code></pre></div></li>
+<li><strong>Dashboard widget</strong> — "Members approaching / over their monthly limit" and "Members calling off-tier models" with alert history. Team owner only. Read-only.</li>
+<li><strong>Shadow criterion for flipping to stage 3:</strong> N days (see <strong>Open decision 1</strong>) with:<ul>
+<li>At least one member having a real budget cap set, producing zero budget false positives, AND</li>
+<li>At least one member on a Medium tier actually generating a <code>TIER_LEAK</code> alert (for tier), or Ryan confirming via manual test</li>
+<li>"False positive" = an alert fired on a request where the reconciliation check says the member still had headroom / was actually allowed that model at the time of the request.</li>
+</ul>
+</li>
 </ol>
 <p><strong>Test member:</strong> Ryan opts in as the first test subject. Cap a dummy <code>ryan-shadow-test@example.com</code> user at $1, run some deliberate remix traffic through his key, verify the alert webhook fires, verify no request is blocked. Remove the cap before moving to stage 3. (See <strong>Open decision 3</strong>.)</p>
 <p><strong>Ship criterion:</strong> one test member exercised the alert path successfully + N days of real traffic on whichever members actually have caps set (which is zero today → we have to seed a test case).</p>
@@ -1117,13 +1207,36 @@ Both paths will, in practice, pass <code>undefined</code> for stage 1 because no
 <p><strong>Goal:</strong> actually block over-budget requests at the proxy.</p>
 <p><strong>Changes:</strong></p>
 <ol>
-<li><strong>Env flip:</strong> <code>LITELLM_BUDGET_MODE=enforce</code>. From now on, every push sends <code>max_budget: cents / 100</code> AND <code>soft_budget: cents / 100 * 0.8</code> (soft alert at 80% of hard cap, so team owners get a heads-up before their members hit the wall).</li>
-<li><strong>Backfill-in-place migration:</strong> one-time script reads every member with <code>monthlyLimitCents</code> set and pushes <code>max_budget</code> to their LiteLLM key. Idempotent.</li>
-<li><strong>Error handling in the remix / chat paths:</strong> when LiteLLM returns the over-budget error (need to verify exact error shape — see <strong>Open decision 2</strong>), catch it and translate it to a user-facing response with clear copy: <em>"You've reached your monthly $X limit. Contact your team owner to request more."</em> Never let the raw LiteLLM error surface to end users.</li>
-<li><strong>Dashboard UX:</strong> member view shows "Over limit — contact owner" with a contact CTA. Team owner view shows "Raise limit" button inline with the alert.</li>
+<li><strong>Env flip:</strong> <code>LITELLM_BUDGET_MODE=enforce</code>. From now on, every push sends:<ul>
+<li><code>max_budget: cents / 100</code> (hard ceiling)</li>
+<li><code>soft_budget: cents / 100 * 0.8</code> (80% early warning)</li>
+<li><code>models: getAllowedModelsForTier(tier) ?? undefined</code> (tier restriction — <code>undefined</code> for LARGE, array for MEDIUM/SMALL)</li>
+</ul>
+</li>
+<li><strong>Backfill-in-place migration:</strong> re-run <code>scripts/backfill-litellm-enforcement.ts</code> — this time with models enabled. Touches <strong>exactly 2 keys</strong> in prod today: Ryan's and Devin's. Both Medium-tier.<ul>
+<li><strong>Order of operations</strong> (critical for avoiding false positives):<ol>
+<li>Coordinate with Devin out-of-band ("we're enforcing tier access tomorrow — let us know if you've been using fabric-large and want to upgrade")</li>
+<li>Run backfill against Ryan's key first (self-test)</li>
+<li>Run backfill against Devin's key only after Ryan's key is verified working</li>
+<li>24-hour soak, watch Slack for any support tickets</li>
 </ol>
-<p><strong>Ship criterion:</strong> stage 2 telemetry clean; explicit Ryan sign-off; first enforcement target is Ryan himself for a one-day soak before opening to others.</p>
-<p><strong>Rollback:</strong> env flip to <code>LITELLM_BUDGET_MODE=shadow</code> + run the "clear max_budget everywhere, keep soft_budget" reconciliation script. Reverts enforcement in minutes.</p>
+</li>
+</ul>
+</li>
+<li><strong>Error handling in the remix / chat paths:</strong> when LiteLLM returns the over-budget OR off-tier error (need to verify exact error shapes — see <strong>Open decision 2</strong>), catch and translate:<ul>
+<li>Budget exceeded: <em>"You've reached your monthly $X limit. Contact your team owner to request more."</em></li>
+<li>Model not allowed: <em>"Your plan includes fabric-medium but not fabric-large. Upgrade to Large or use a covered model."</em> + link to billing page</li>
+</ul>
+</li>
+<li><strong>Dashboard UX:</strong><ul>
+<li>Member hitting budget cap: "Over limit — contact owner"</li>
+<li>Member hitting tier restriction: "Your plan doesn't include this model" + upgrade CTA</li>
+<li>Team owner: alert inline with raise-limit / upgrade-tier buttons</li>
+</ul>
+</li>
+</ol>
+<p><strong>Ship criterion:</strong> stage 2 telemetry clean for both budget AND tier alerts; explicit Ryan sign-off; first enforcement target is Ryan's own <code>ryan@monsurate.com</code> Medium key for a one-day soak before applying to Devin's key.</p>
+<p><strong>Rollback:</strong> env flip to <code>LITELLM_BUDGET_MODE=shadow</code> + run <code>scripts/litellm-clear-enforcement.ts</code> which removes both <code>max_budget</code> and <code>models</code> restrictions from all keys (leaving <code>soft_budget</code> intact for observability). Reverts enforcement in minutes on both dimensions simultaneously.</p>
 <h3 id="request-time-enforcement-what-actually-happens-when-a-members-cap-is-hit">Request-time enforcement — what actually happens when a member's cap is hit<a class="headerlink" href="#request-time-enforcement-what-actually-happens-when-a-members-cap-is-hit" title="Permanent link">¶</a></h3>
 <p><a class="glightbox" data-type="image" data-width="100%" data-height="auto" href="../teams-billing-step6-request-flow.png" data-desc-position="bottom"><img alt="Request-time enforcement flow — happy path vs over-budget path through the LiteLLM proxy" src="../teams-billing-step6-request-flow.png"></a></p>
 <h2 id="budget-reset-model-native-budget_duration-vs-db-side">Budget reset model: native <code>budget_duration</code> vs DB-side<a class="headerlink" href="#budget-reset-model-native-budget_duration-vs-db-side" title="Permanent link">¶</a></h2>
@@ -1147,62 +1260,86 @@ Both paths will, in practice, pass <code>undefined</code> for stage 1 because no
 <th>Line</th>
 <th>Change</th>
 <th>Stage</th>
+<th>Dim</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>src/lib/litellm.ts</code></td>
 <td>84-119</td>
-<td>Extend <code>generateKey</code>/<code>updateKey</code> to accept <code>softBudget</code>, <code>budgetDuration</code></td>
+<td>Extend <code>generateKey</code>/<code>updateKey</code> with <code>softBudget</code>, <code>budgetDuration</code> params</td>
 <td>1</td>
+<td>$</td>
 </tr>
 <tr>
 <td><code>src/app/api/team/invitations/[token]/accept/route.ts</code></td>
 <td>77</td>
-<td>Pass <code>maxBudget</code> (or <code>softBudget</code> in stage 2)</td>
+<td>Pass <code>maxBudget</code> + <code>models</code> (gated by mode)</td>
 <td>1 → 2 → 3</td>
+<td>$ + tier</td>
 </tr>
 <tr>
 <td><code>src/app/api/keys/generate/route.ts</code></td>
 <td>52</td>
 <td>Same</td>
 <td>1 → 2 → 3</td>
+<td>$ + tier</td>
 </tr>
 <tr>
 <td><code>src/app/api/team/members/[memberId]/route.ts</code></td>
 <td>~157</td>
-<td>New sync block mirroring <code>rateLimitRpm</code></td>
+<td>New sync block for <code>monthlyLimitCents</code> AND <code>unlimitedTier</code> changes (triggers <code>models</code> re-sync)</td>
 <td>1</td>
+<td>$ + tier</td>
 </tr>
 <tr>
 <td><code>src/app/api/litellm/callback/route.ts</code></td>
 <td>209-244</td>
-<td>Leave alone in stage 1. Stage 3: translate proxy over-budget error if it arrives here.</td>
-<td>3</td>
+<td>Leave budget path alone in stage 1. <strong>Stage 2</strong>: add tier-leak detection branch using <code>isModelCoveredByTier</code>. <strong>Stage 3</strong>: translate proxy over-budget / off-tier errors if they arrive here.</td>
+<td>2, 3</td>
+<td>tier shadow, $ + tier enforce</td>
 </tr>
 <tr>
 <td><code>src/app/api/litellm/budget-alerts/route.ts</code></td>
 <td>NEW</td>
-<td>Webhook receiver for soft-budget alerts</td>
+<td>Webhook receiver for LiteLLM <code>budget_alerts</code> (soft_budget fires)</td>
 <td>2</td>
+<td>$</td>
 </tr>
 <tr>
 <td><code>src/lib/litellm.ts</code></td>
 <td>—</td>
 <td>New <code>budgetMode()</code> reading <code>process.env.LITELLM_BUDGET_MODE</code></td>
 <td>2</td>
+<td>both</td>
 </tr>
 <tr>
-<td><code>scripts/backfill-litellm-max-budget.ts</code></td>
+<td><code>src/lib/billing.ts</code></td>
+<td>68</td>
+<td>Existing <code>getAllowedModelsForTier</code> — now actually called from the generate/update sites</td>
+<td>1 (stub), 3 (live)</td>
+<td>tier</td>
+</tr>
+<tr>
+<td><code>scripts/backfill-litellm-enforcement.ts</code></td>
 <td>NEW</td>
-<td>Idempotent backfill</td>
-<td>1, 3</td>
+<td>Idempotent backfill for BOTH budget and models</td>
+<td>1 (budget only), 3 (+ models)</td>
+<td>$ + tier</td>
+</tr>
+<tr>
+<td><code>scripts/litellm-clear-enforcement.ts</code></td>
+<td>NEW</td>
+<td>Rollback script — clears both fields</td>
+<td>rollback</td>
+<td>$ + tier</td>
 </tr>
 <tr>
 <td><code>prisma/schema.prisma</code></td>
 <td>NEW model</td>
-<td><code>BudgetAlert</code> table</td>
+<td><code>BudgetAlert</code> table with <code>kind: BUDGET_SOFT | BUDGET_HARD | TIER_LEAK</code></td>
 <td>2</td>
+<td>both</td>
 </tr>
 </tbody>
 </table>
@@ -1305,15 +1442,15 @@ Both paths will, in practice, pass <code>undefined</code> for stage 1 because no
 <li><strong>Total calendar time: ~1 week</strong> from plan approval to full enforcement, gated on shadow-phase observation</li>
 </ul>
 <h2 id="appendix-verification-commands">Appendix — verification commands<a class="headerlink" href="#appendix-verification-commands" title="Permanent link">¶</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># LiteLLM proxy health (confirms MaxBudgetLimiter is loaded)</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer sk-farpoint-litellm"</span><span class="w"> </span>http://69.30.85.97:8000/health/readiness<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Inspect a key's current budget fields</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer sk-farpoint-litellm"</span><span class="w"> </span><span class="s2">"http://69.30.85.97:8000/key/info?key=&lt;key&gt;"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># List keys with non-null max_budget (sanity check during rollout)</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer sk-farpoint-litellm"</span><span class="w"> </span><span class="s2">"http://69.30.85.97:8000/key/list?return_full_object=true&amp;size=200"</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">'.keys[] | select(.max_budget != null) | {user_id, max_budget, spend, soft_budget}'</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># LiteLLM proxy health (confirms MaxBudgetLimiter is loaded)</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer sk-farpoint-litellm"</span><span class="w"> </span>http://69.30.85.97:8000/health/readiness<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># Inspect a key's current budget fields</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer sk-farpoint-litellm"</span><span class="w"> </span><span class="s2">"http://69.30.85.97:8000/key/info?key=&lt;key&gt;"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1"># List keys with non-null max_budget (sanity check during rollout)</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer sk-farpoint-litellm"</span><span class="w"> </span><span class="s2">"http://69.30.85.97:8000/key/list?return_full_object=true&amp;size=200"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">'.keys[] | select(.max_budget != null) | {user_id, max_budget, spend, soft_budget}'</span>
 </code></pre></div>
 
 

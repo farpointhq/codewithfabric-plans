@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 32px; background: #0a0a0a; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+  .page { max-width: 1480px; margin: 0 auto; color: #e5e5e5; }
+  .page-title { font-size: 24px; font-weight: 800; color: #f3f4f6; margin-bottom: 6px; }
+  .page-sub { font-size: 14px; color: #9ca3af; margin-bottom: 24px; }
+
+  .callout { background: #111827; border: 1px solid #991b1b; border-left: 4px solid #ef4444; border-radius: 10px; padding: 16px 20px; margin-bottom: 22px; }
+  .callout-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #fca5a5; margin-bottom: 6px; }
+  .callout-body { font-size: 13px; color: #d1d5db; line-height: 1.55; }
+  .callout-body code { background: rgba(239, 68, 68, 0.12); color: #fca5a5; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+  .callout-body b { color: #fca5a5; }
+
+  .row { display: flex; gap: 20px; align-items: stretch; }
+  .panel { flex: 1; background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 24px; }
+  .panel.broken { border-color: rgba(239, 68, 68, 0.3); }
+  .panel.fixed  { border-color: rgba(34, 197, 94, 0.3); }
+  .panel-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #1f2937; }
+  .panel.broken .panel-title { color: #f87171; }
+  .panel.fixed  .panel-title { color: #34d399; }
+  .panel-title { font-size: 16px; font-weight: 700; letter-spacing: 0.3px; }
+  .panel-badge { font-size: 10px; padding: 3px 8px; border-radius: 999px; font-weight: 700; letter-spacing: 0.5px; }
+  .panel.broken .panel-badge { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+  .panel.fixed  .panel-badge { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+
+  .key-card { background: #0d1117; border: 1px solid #21262d; border-radius: 12px; padding: 18px; }
+  .key-card-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: #6b7280; text-transform: uppercase; margin-bottom: 10px; }
+  .key-hash { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #a5b4fc; background: rgba(99, 102, 241, 0.1); padding: 6px 10px; border-radius: 6px; margin-bottom: 14px; border: 1px solid rgba(99, 102, 241, 0.2); }
+
+  .field-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .field { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 12px 14px; }
+  .field-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .field-name { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #c4b5fd; font-weight: 700; }
+  .field-badge { font-size: 9px; padding: 2px 7px; border-radius: 999px; font-weight: 700; letter-spacing: 0.5px; }
+  .fb-bad { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+  .fb-good { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+  .field-value { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #fcd34d; margin-bottom: 4px; }
+  .field-value.good { color: #86efac; }
+  .field-note { font-size: 11px; color: #9ca3af; line-height: 1.4; }
+  .field-note code { background: rgba(99, 102, 241, 0.1); color: #c4b5fd; padding: 1px 5px; border-radius: 3px; font-size: 10px; font-family: 'JetBrains Mono', monospace; }
+
+  .dim-label { display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #9ca3af; margin: 14px 0 8px; padding-left: 4px; }
+  .dim-label .dim-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dim-1 .dim-dot { background: #fbbf24; }
+  .dim-2 .dim-dot { background: #a78bfa; }
+
+  .customer-row { background: #111827; border: 1px solid #1f2937; border-radius: 10px; padding: 14px 18px; margin-top: 20px; font-size: 12px; color: #d1d5db; display: flex; align-items: center; gap: 14px; line-height: 1.5; }
+  .customer-row b { color: #e5e5e5; }
+  .customer-row code { background: rgba(99, 102, 241, 0.12); color: #c4b5fd; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+  .customer-label { flex-shrink: 0; padding: 4px 10px; border-radius: 999px; background: rgba(251, 191, 36, 0.15); color: #fcd34d; border: 1px solid rgba(251, 191, 36, 0.3); font-weight: 700; font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; }
+</style></head><body>
+<div class="page">
+  <div class="page-title">Two Enforcement Dimensions on Every LiteLLM Key</div>
+  <div class="page-sub">Step 6 isn't just about budget caps. The same call sites that don't pass <code style="background:rgba(99,102,241,.12);color:#c4b5fd;padding:1px 6px;border-radius:4px">max_budget</code> also don't pass <code style="background:rgba(99,102,241,.12);color:#c4b5fd;padding:1px 6px;border-radius:4px">models</code> — leaking model access across tiers.</div>
+
+  <div class="callout">
+    <div class="callout-title">Empirical proof (verified 2026-04-15 on prod LiteLLM)</div>
+    <div class="callout-body">
+      Customer <b>Devin Durrant</b> is on a <b>MEDIUM unlimited</b> plan. His LiteLLM key <code>454b846af04919</code> returns <code>models: []</code> from the proxy — meaning <b>no model restriction</b>. He can call <code>fabric-large</code> right now, despite paying for the Medium tier. The callback would attempt to decrement his balance at pay-as-you-go Large rates, but nothing in the request path prevents the inference itself.
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="panel broken">
+      <div class="panel-head">
+        <div class="panel-title">BROKEN — today</div>
+        <div class="panel-badge">Two gaps, one key</div>
+      </div>
+
+      <div class="key-card">
+        <div class="key-card-title">LiteLLM key — Devin Durrant (MEDIUM plan)</div>
+        <div class="key-hash">454b846af04919...</div>
+
+        <div class="dim-label dim-1"><div class="dim-dot"></div>Dimension 1 — Budget cap</div>
+        <div class="field-grid">
+          <div class="field">
+            <div class="field-head">
+              <div class="field-name">max_budget</div>
+              <div class="field-badge fb-bad">Leak</div>
+            </div>
+            <div class="field-value">null</div>
+            <div class="field-note">No hard ceiling. Can burn through any amount with no proxy-side block.</div>
+          </div>
+          <div class="field">
+            <div class="field-head">
+              <div class="field-name">soft_budget</div>
+              <div class="field-badge fb-bad">Leak</div>
+            </div>
+            <div class="field-value">null</div>
+            <div class="field-note">No warning threshold. No alerts to the team owner as spend climbs.</div>
+          </div>
+        </div>
+
+        <div class="dim-label dim-2"><div class="dim-dot"></div>Dimension 2 — Tier access</div>
+        <div class="field-grid">
+          <div class="field">
+            <div class="field-head">
+              <div class="field-name">models</div>
+              <div class="field-badge fb-bad">Leak</div>
+            </div>
+            <div class="field-value">[]</div>
+            <div class="field-note">Empty array = <b>all models allowed</b>. Medium-plan customer can call <code>fabric-large</code> unrestricted.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel fixed">
+      <div class="panel-head">
+        <div class="panel-title">FIXED — after step 6</div>
+        <div class="panel-badge">Both fields wired</div>
+      </div>
+
+      <div class="key-card">
+        <div class="key-card-title">LiteLLM key — Devin Durrant (MEDIUM plan)</div>
+        <div class="key-hash">454b846af04919...</div>
+
+        <div class="dim-label dim-1"><div class="dim-dot"></div>Dimension 1 — Budget cap</div>
+        <div class="field-grid">
+          <div class="field">
+            <div class="field-head">
+              <div class="field-name">max_budget</div>
+              <div class="field-badge fb-good">Enforced</div>
+            </div>
+            <div class="field-value good">100.00</div>
+            <div class="field-note">Read from <code>TeamMember.monthlyLimitCents</code> / 100. Hard block at the proxy when exceeded.</div>
+          </div>
+          <div class="field">
+            <div class="field-head">
+              <div class="field-name">soft_budget</div>
+              <div class="field-badge fb-good">Enforced</div>
+            </div>
+            <div class="field-value good">80.00</div>
+            <div class="field-note">80% of max. Fires <code>budget_alerts</code> webhook → team owner gets early warning.</div>
+          </div>
+        </div>
+
+        <div class="dim-label dim-2"><div class="dim-dot"></div>Dimension 2 — Tier access</div>
+        <div class="field-grid">
+          <div class="field">
+            <div class="field-head">
+              <div class="field-name">models</div>
+              <div class="field-badge fb-good">Enforced</div>
+            </div>
+            <div class="field-value good">["fabric-small", "fabric-medium"]</div>
+            <div class="field-note">Read from <code>getAllowedModelsForTier("MEDIUM")</code> — function already exists in <code>billing.ts:68</code>, just never called. <code>fabric-large</code> returns 4xx at the proxy.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="customer-row">
+    <div class="customer-label">Blast radius today</div>
+    <div>Only <b>2 customer accounts</b> are currently on sub-LARGE Unlimited plans and therefore affected by the tier-access leak: <b>ryan@monsurate.com</b> (your own test account) and <b>devin.durrant@gmail.com</b> (real paying customer). Every other Unlimited account is LARGE — no model restriction to apply. This makes stage 3 rollout tractable: Ryan's account is the natural first test subject, and we can coordinate directly with Devin before flipping enforcement on his key.</div>
+  </div>
+</div>
+</body></html>

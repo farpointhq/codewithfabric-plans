@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 32px; background: #0a0a0a; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+  .page { max-width: 1480px; margin: 0 auto; color: #e5e5e5; }
+  .page-title { font-size: 24px; font-weight: 800; color: #f3f4f6; margin-bottom: 6px; }
+  .page-sub { font-size: 14px; color: #9ca3af; margin-bottom: 24px; }
+
+  .swimlanes { display: grid; grid-template-columns: 180px 1fr 1fr 1fr 1fr; gap: 0; border: 1px solid #1f2937; border-radius: 12px; background: #111827; padding: 20px; }
+
+  .lane-header { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 10px 12px; text-align: center; border-bottom: 2px solid #374151; }
+  .lh-step { color: #6b7280; text-align: left; }
+  .lh-member { color: #93c5fd; }
+  .lh-app { color: #c4b5fd; }
+  .lh-proxy { color: #fcd34d; }
+  .lh-vllm { color: #86efac; }
+
+  .step-label { padding: 14px 12px; font-size: 11px; color: #9ca3af; font-weight: 600; border-bottom: 1px dashed #1f2937; }
+  .step-label b { color: #e5e5e5; font-weight: 700; display: block; font-size: 12px; margin-bottom: 2px; }
+
+  .cell { padding: 14px 12px; border-bottom: 1px dashed #1f2937; position: relative; min-height: 60px; }
+
+  .msg { background: #0d1117; border-radius: 8px; padding: 10px 12px; font-size: 11px; color: #d1d5db; line-height: 1.5; border-left: 3px solid #6366f1; }
+  .msg.ok { border-left-color: #22c55e; background: rgba(34, 197, 94, 0.06); }
+  .msg.block { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.08); }
+  .msg.warn { border-left-color: #fbbf24; background: rgba(251, 191, 36, 0.08); }
+  .msg code { background: rgba(99, 102, 241, 0.12); color: #c4b5fd; padding: 1px 5px; border-radius: 3px; font-size: 10px; font-family: 'JetBrains Mono', monospace; }
+  .msg-title { font-weight: 700; color: #a5b4fc; margin-bottom: 4px; font-size: 11px; }
+  .msg.ok .msg-title { color: #86efac; }
+  .msg.block .msg-title { color: #fca5a5; }
+  .msg.warn .msg-title { color: #fcd34d; }
+
+  .path-title { font-size: 13px; font-weight: 800; padding: 14px 20px; margin-top: 22px; margin-bottom: -1px; border-radius: 12px 12px 0 0; }
+  .path-title.happy { background: linear-gradient(90deg, rgba(34, 197, 94, 0.15), transparent); color: #86efac; border: 1px solid #15803d; border-bottom: none; }
+  .path-title.over { background: linear-gradient(90deg, rgba(239, 68, 68, 0.15), transparent); color: #fca5a5; border: 1px solid #991b1b; border-bottom: none; }
+
+  .swimlanes.happy { border-color: #15803d; border-top-left-radius: 0; border-top-right-radius: 0; }
+  .swimlanes.over { border-color: #991b1b; border-top-left-radius: 0; border-top-right-radius: 0; }
+
+  .arrow { position: absolute; top: 50%; transform: translateY(-50%); color: #6366f1; font-size: 20px; font-weight: 700; }
+  .arrow-right { right: -8px; }
+
+  .empty { opacity: 0.2; font-size: 24px; text-align: center; color: #4b5563; }
+</style></head><body>
+<div class="page">
+  <div class="page-title">Request-Time Enforcement — Happy Path vs Over-Budget Path</div>
+  <div class="page-sub">What happens when a capped member makes a remix request. The proxy's <code style="background:rgba(99,102,241,.12);color:#c4b5fd;padding:1px 6px;border-radius:4px">_PROXY_MaxBudgetLimiter</code> is already loaded in v1.82.2 and runs before vLLM is touched.</div>
+
+  <div class="path-title happy">HAPPY PATH — member has headroom</div>
+  <div class="swimlanes happy">
+    <div class="lane-header lh-step">Flow step</div>
+    <div class="lane-header lh-member">Member (Fabric UI)</div>
+    <div class="lane-header lh-app">Next.js (monsurate/codewithfabric)</div>
+    <div class="lane-header lh-proxy">LiteLLM proxy</div>
+    <div class="lane-header lh-vllm">vLLM (H100 node)</div>
+
+    <div class="step-label"><b>1</b>Request</div>
+    <div class="cell"><div class="msg">Clicks "Remix" on a post.</div></div>
+    <div class="cell"><div class="msg">POST <code>/api/posts/[id]/remix</code> → <code>streamLLMCall</code> with <code>user: userId</code></div></div>
+    <div class="cell"></div>
+    <div class="cell"></div>
+
+    <div class="step-label"><b>2</b>Proxy check</div>
+    <div class="cell"></div>
+    <div class="cell"><div class="msg">Calls LiteLLM with member's API key</div></div>
+    <div class="cell"><div class="msg">Lookup key → <code>spend=18.50</code>, <code>max_budget=50.00</code>. Headroom. Passes through.</div></div>
+    <div class="cell"></div>
+
+    <div class="step-label"><b>3</b>Inference</div>
+    <div class="cell"></div>
+    <div class="cell"></div>
+    <div class="cell"><div class="msg">Routes to Qwen3.5-397B-A17B-FP8</div></div>
+    <div class="cell"><div class="msg ok"><div class="msg-title">200 — response stream</div>Tokens generated.</div></div>
+
+    <div class="step-label"><b>4</b>Bookkeeping</div>
+    <div class="cell"><div class="msg ok"><div class="msg-title">Sees remix output</div>Nothing unusual.</div></div>
+    <div class="cell"><div class="msg"><code>/api/litellm/callback</code>: <code>currentMonthSpendCents += cost</code></div></div>
+    <div class="cell"><div class="msg">Proxy's own spend counter: <code>spend = 18.50 + cost</code></div></div>
+    <div class="cell"></div>
+  </div>
+
+  <div class="path-title over">OVER-BUDGET PATH — member has hit their cap</div>
+  <div class="swimlanes over">
+    <div class="lane-header lh-step">Flow step</div>
+    <div class="lane-header lh-member">Member (Fabric UI)</div>
+    <div class="lane-header lh-app">Next.js (monsurate/codewithfabric)</div>
+    <div class="lane-header lh-proxy">LiteLLM proxy</div>
+    <div class="lane-header lh-vllm">vLLM (H100 node)</div>
+
+    <div class="step-label"><b>1</b>Request</div>
+    <div class="cell"><div class="msg">Clicks "Remix"</div></div>
+    <div class="cell"><div class="msg">POST <code>/api/posts/[id]/remix</code> → <code>streamLLMCall</code></div></div>
+    <div class="cell"></div>
+    <div class="cell"></div>
+
+    <div class="step-label"><b>2</b>Proxy check</div>
+    <div class="cell"></div>
+    <div class="cell"><div class="msg">Calls LiteLLM with member's API key</div></div>
+    <div class="cell"><div class="msg block"><div class="msg-title">BLOCK</div><code>spend=51.20</code> ≥ <code>max_budget=50.00</code>. Returns 4xx before vLLM call.</div></div>
+    <div class="cell"><div class="empty">— never called —</div></div>
+
+    <div class="step-label"><b>3</b>Error translation</div>
+    <div class="cell"></div>
+    <div class="cell"><div class="msg warn"><div class="msg-title">Catch &amp; translate</div>Catches LiteLLM 4xx. Returns to client: <code>{error: "quota_reached", team_owner: "..."}</code></div></div>
+    <div class="cell"></div>
+    <div class="cell"></div>
+
+    <div class="step-label"><b>4</b>User UX</div>
+    <div class="cell"><div class="msg warn"><div class="msg-title">"You've reached $50"</div>"Ask Ryan to raise your limit or wait until your budget resets on May 14."</div></div>
+    <div class="cell"></div>
+    <div class="cell"></div>
+    <div class="cell"></div>
+  </div>
+</div>
+</body></html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 32px; background: #0a0a0a; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+  .page { max-width: 1380px; margin: 0 auto; color: #e5e5e5; }
+  .page-title { font-size: 24px; font-weight: 800; color: #f3f4f6; margin-bottom: 6px; }
+  .page-sub { font-size: 14px; color: #9ca3af; margin-bottom: 28px; }
+
+  .insight { background: #111827; border: 1px solid #4338ca; border-left: 4px solid #6366f1; border-radius: 10px; padding: 16px 20px; margin-bottom: 24px; }
+  .insight-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #a5b4fc; margin-bottom: 6px; }
+  .insight-body { font-size: 14px; color: #d1d5db; line-height: 1.55; }
+  .insight-body code { background: rgba(99, 102, 241, 0.15); color: #c4b5fd; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'JetBrains Mono', monospace; }
+
+  table { width: 100%; border-collapse: separate; border-spacing: 0; background: #111827; border: 1px solid #1f2937; border-radius: 12px; overflow: hidden; }
+  thead th { background: #0d1117; text-align: left; padding: 14px 18px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #9ca3af; border-bottom: 2px solid #374151; }
+  thead th.col-soft { color: #fcd34d; }
+  thead th.col-max { color: #fca5a5; }
+  thead th.col-dur { color: #86efac; }
+
+  tbody tr td { padding: 16px 18px; border-bottom: 1px solid #1f2937; font-size: 13px; color: #d1d5db; vertical-align: top; line-height: 1.55; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.alt td { background: rgba(255, 255, 255, 0.015); }
+
+  td.aspect { font-weight: 700; color: #e5e5e5; font-size: 13px; }
+  td.aspect .sub { display: block; font-weight: 400; color: #6b7280; font-size: 11px; margin-top: 2px; }
+
+  td code { background: rgba(99, 102, 241, 0.12); color: #c4b5fd; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+
+  .yes { color: #4ade80; font-weight: 700; }
+  .no  { color: #f87171; font-weight: 700; }
+  .warn { color: #fbbf24; font-weight: 700; }
+
+  .legend { display: flex; gap: 22px; font-size: 12px; color: #9ca3af; margin-top: 20px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .legend-box { width: 14px; height: 14px; border-radius: 4px; }
+  .lb-soft { background: rgba(251, 191, 36, 0.25); border: 1px solid #fbbf24; }
+  .lb-max  { background: rgba(239, 68, 68, 0.25); border: 1px solid #f87171; }
+  .lb-dur  { background: rgba(34, 197, 94, 0.25); border: 1px solid #4ade80; }
+</style></head><body>
+<div class="page">
+  <div class="page-title">LiteLLM Native Budget Fields — Semantics Matrix</div>
+  <div class="page-sub">Why we don't need an app-level fail-open wrapper: the proxy already distinguishes soft alerts from hard blocks.</div>
+
+  <div class="insight">
+    <div class="insight-title">Key insight driving the plan</div>
+    <div class="insight-body">
+      LiteLLM has <b>three independent</b> budget fields on each key. We treat them as three switches for the rollout:
+      <code>soft_budget</code> for stage 2 (observability), <code>max_budget</code> for stage 3 (enforcement), and
+      <code>budget_duration</code> decoupled from both (reset cadence, can be set any time). No additional proxy wiring required.
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:22%">Aspect</th>
+        <th class="col-soft" style="width:26%">soft_budget</th>
+        <th class="col-max"  style="width:26%">max_budget</th>
+        <th class="col-dur"  style="width:26%">budget_duration</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="aspect">Blocks requests at proxy<span class="sub">Does a request over this limit get refused?</span></td>
+        <td><span class="no">No</span> — fires alert only</td>
+        <td><span class="yes">Yes</span> — <code>_PROXY_MaxBudgetLimiter</code> returns 4xx</td>
+        <td><span class="no">No</span> — it's a timer, not a gate</td>
+      </tr>
+      <tr class="alt">
+        <td class="aspect">Fires webhook / alert<span class="sub">Does LiteLLM call back to us?</span></td>
+        <td><span class="yes">Yes</span> — <code>budget_alerts</code> webhook</td>
+        <td>Yes (on the 4xx the app catches)</td>
+        <td><span class="no">No</span></td>
+      </tr>
+      <tr>
+        <td class="aspect">Auto-resets on schedule<span class="sub">Does the spend counter go back to zero?</span></td>
+        <td><span class="no">No</span> — follows the max reset</td>
+        <td><span class="no">No</span> — follows <code>budget_duration</code></td>
+        <td><span class="yes">Yes</span> — rolling window, proxy-authoritative</td>
+      </tr>
+      <tr class="alt">
+        <td class="aspect">Value format</td>
+        <td><code>number</code> (USD)</td>
+        <td><code>number</code> (USD)</td>
+        <td><code>string</code> like <code>"30d"</code>, <code>"7d"</code></td>
+      </tr>
+      <tr>
+        <td class="aspect">Used in stage 1</td>
+        <td>— (still null)</td>
+        <td>— (still null)</td>
+        <td>Optionally set to <code>"30d"</code></td>
+      </tr>
+      <tr class="alt">
+        <td class="aspect">Used in stage 2 (shadow)</td>
+        <td><span class="yes">Yes</span> — set to cap value</td>
+        <td>— (null — does not block)</td>
+        <td><code>"30d"</code> if native-reset decision</td>
+      </tr>
+      <tr>
+        <td class="aspect">Used in stage 3 (enforce)</td>
+        <td><span class="yes">Yes</span> — set to 80% of cap (advance warning)</td>
+        <td><span class="yes">Yes</span> — set to cap value (hard ceiling)</td>
+        <td><code>"30d"</code></td>
+      </tr>
+      <tr class="alt">
+        <td class="aspect">Rollback mechanism<span class="sub">How we un-do it</span></td>
+        <td><code>updateKey({ softBudget: null })</code></td>
+        <td><code>updateKey({ maxBudget: null })</code> — env var flip</td>
+        <td><code>updateKey({ budgetDuration: null })</code></td>
+      </tr>
+      <tr>
+        <td class="aspect">Our code's name for it</td>
+        <td><code>litellm.ts::updateKey({ softBudget })</code></td>
+        <td><code>litellm.ts::updateKey({ maxBudget })</code></td>
+        <td><code>litellm.ts::updateKey({ budgetDuration })</code></td>
+      </tr>
+      <tr class="alt">
+        <td class="aspect">LiteLLM proxy callback handler</td>
+        <td><code>_PROXY_MaxBudgetLimiter</code> (soft branch)</td>
+        <td><code>_PROXY_MaxBudgetLimiter</code> (hard branch)</td>
+        <td>Internal scheduler</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-box lb-soft"></div>Stage 2 lever — observability without risk</div>
+    <div class="legend-item"><div class="legend-box lb-max"></div>Stage 3 lever — real enforcement</div>
+    <div class="legend-item"><div class="legend-box lb-dur"></div>Cadence lever — decoupled from both</div>
+  </div>
+</div>
+</body></html>

@@ -588,6 +588,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#why-soft_budget-vs-max_budget-matters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why soft_budget vs max_budget matters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#stage-1-wiring-backfill" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -614,6 +625,17 @@
     <span class="md-ellipsis">
       
         Stage 3 — Enforce (max_budget flip)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#request-time-enforcement-what-actually-happens-when-a-members-cap-is-hit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request-time enforcement — what actually happens when a member's cap is hit
       
     </span>
   </a>
@@ -663,6 +685,17 @@
     <span class="md-ellipsis">
       
         UX copy (draft)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rollback-paths-every-escape-hatch-by-stage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rollback paths — every escape hatch by stage
       
     </span>
   </a>
@@ -801,6 +834,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#why-soft_budget-vs-max_budget-matters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why soft_budget vs max_budget matters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#stage-1-wiring-backfill" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -827,6 +871,17 @@
     <span class="md-ellipsis">
       
         Stage 3 — Enforce (max_budget flip)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#request-time-enforcement-what-actually-happens-when-a-members-cap-is-hit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request-time enforcement — what actually happens when a member's cap is hit
       
     </span>
   </a>
@@ -876,6 +931,17 @@
     <span class="md-ellipsis">
       
         UX copy (draft)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rollback-paths-every-escape-hatch-by-stage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rollback paths — every escape hatch by stage
       
     </span>
   </a>
@@ -962,6 +1028,7 @@ Written: 2026-04-15. Status: DRAFT — awaiting Ryan approval before any code la
 <h2 id="tldr">TL;DR<a class="headerlink" href="#tldr" title="Permanent link">¶</a></h2>
 <p><code>TeamMember.monthlyLimitCents</code> is theater — it's saved, displayed, and logged post-hoc, but the LiteLLM proxy never learns about it. A member with a $50 cap can burn $5,000 and all they get is a <code>console.warn</code>. This plan wires the field to LiteLLM's native <code>max_budget</code> enforcement, with a three-stage rollout that uses LiteLLM's <code>soft_budget</code> field as the built-in shadow phase — meaning we get alerts-only observability before enforcement without any app-level fail-open hacks.</p>
 <p><strong>Hard constraint (non-negotiable):</strong> production has real paying users. We never ship a change that can false-positive block them. Every stage is reversible; the enforcement flip happens only after the shadow stage shows zero false-positive candidates.</p>
+<p><a class="glightbox" data-type="image" data-width="100%" data-height="auto" href="../teams-billing-step6-current-vs-target.png" data-desc-position="bottom"><img alt="Current vs Target data flow — why monthlyLimitCents is theater today and what wiring it looks like after step 6" src="../teams-billing-step6-current-vs-target.png"></a></p>
 <h2 id="current-state-investigation-2026-04-14">Current state (investigation, 2026-04-14)<a class="headerlink" href="#current-state-investigation-2026-04-14" title="Permanent link">¶</a></h2>
 <p><strong>What works:</strong></p>
 <ul>
@@ -989,11 +1056,11 @@ Written: 2026-04-15. Status: DRAFT — awaiting Ryan approval before any code la
 </ul>
 <p><strong>Blast radius today: zero.</strong> The only team with members is Farpoint HQ (owned by <code>ryan@farpointhq.com</code>, 8 employee members added 2026-04-14). No one has <code>monthlyLimitCents</code> set. This means stages 1 and 2 can ship without affecting a single customer. Stage 3 (the enforcement flip) also ships affecting nobody until an owner explicitly sets a cap on someone, because we default <code>max_budget: null</code> at key creation.</p>
 <h2 id="architecture-three-stage-rollout">Architecture: three-stage rollout<a class="headerlink" href="#architecture-three-stage-rollout" title="Permanent link">¶</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Stage 1 — Wiring &amp; Backfill         [safe: writes null budgets, no enforcement effect]
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>Stage 2 — Shadow (soft_budget only) [safe: alerts fire, nothing blocks]
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>Stage 3 — Enforce (max_budget flip) [ship only after stage 2 shows zero false positives]
-</code></pre></div>
+<p><a class="glightbox" data-type="image" data-width="100%" data-height="auto" href="../teams-billing-step6-rollout-stages.png" data-desc-position="bottom"><img alt="Three-stage rollout plan — wiring, shadow, enforce — with hard gates between each stage" src="../teams-billing-step6-rollout-stages.png"></a></p>
 <p>Each stage is an independent PR, reviewed separately, with its own rollback path.</p>
+<h3 id="why-soft_budget-vs-max_budget-matters">Why soft_budget vs max_budget matters<a class="headerlink" href="#why-soft_budget-vs-max_budget-matters" title="Permanent link">¶</a></h3>
+<p>The reason we don't need an app-level fail-open wrapper is that LiteLLM already distinguishes the two semantics at the proxy level. This is the core insight of the rollout shape:</p>
+<p><a class="glightbox" data-type="image" data-width="100%" data-height="auto" href="../teams-billing-step6-soft-vs-max.png" data-desc-position="bottom"><img alt="LiteLLM native budget fields — soft_budget vs max_budget vs budget_duration semantics matrix" src="../teams-billing-step6-soft-vs-max.png"></a></p>
 <h3 id="stage-1-wiring-backfill">Stage 1 — Wiring &amp; Backfill<a class="headerlink" href="#stage-1-wiring-backfill" title="Permanent link">¶</a></h3>
 <p><strong>Goal:</strong> the code learns to push budget values to LiteLLM, but every value it pushes during stage 1 is either <code>null</code> (no change) or matches what's already in the DB. No enforcement changes. This stage is deployable at any time; it cannot affect a single user.</p>
 <p><strong>Changes:</strong></p>
@@ -1006,20 +1073,20 @@ Both paths will, in practice, pass <code>undefined</code> for stage 1 because no
 </ul>
 </li>
 <li><strong>Wire <code>maxBudget</code> sync on cap update</strong> — add a block in <code>PATCH /api/team/members/[memberId]</code> mirroring the existing <code>rateLimitRpm</code> sync around line 157:
-    <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">body</span><span class="p">.</span><span class="nx">monthlyLimitCents</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="kc">undefined</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="k">try</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">apiKey</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">prisma</span><span class="p">.</span><span class="nx">apiKey</span><span class="p">.</span><span class="nx">findUnique</span><span class="p">({</span><span class="w"> </span><span class="nx">where</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">userId</span><span class="o">:</span><span class="w"> </span><span class="kt">member.userId</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">});</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">apiKey</span><span class="o">?</span><span class="p">.</span><span class="nx">litellmKeyId</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">      </span><span class="k">await</span><span class="w"> </span><span class="nx">litellm</span><span class="p">.</span><span class="nx">updateKey</span><span class="p">({</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">        </span><span class="nx">key</span><span class="o">:</span><span class="w"> </span><span class="kt">apiKey.litellmKeyId</span><span class="p">,</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">        </span><span class="nx">maxBudget</span><span class="o">:</span><span class="w"> </span><span class="kt">body.monthlyLimitCents</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="nx">body</span><span class="p">.</span><span class="nx">monthlyLimitCents</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nx">100</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="kt">null</span><span class="p">,</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">      </span><span class="p">});</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="nx">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s2">"Failed to sync monthly limit to LiteLLM:"</span><span class="p">,</span><span class="w"> </span><span class="nx">error</span><span class="p">);</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">    </span><span class="c1">// Fail-open: the DB update already succeeded; log and move on.</span>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">  </span><span class="p">}</span>
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="p">}</span>
+    <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">body</span><span class="p">.</span><span class="nx">monthlyLimitCents</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="kc">undefined</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="k">try</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">apiKey</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">prisma</span><span class="p">.</span><span class="nx">apiKey</span><span class="p">.</span><span class="nx">findUnique</span><span class="p">({</span><span class="w"> </span><span class="nx">where</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">userId</span><span class="o">:</span><span class="w"> </span><span class="kt">member.userId</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">});</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">apiKey</span><span class="o">?</span><span class="p">.</span><span class="nx">litellmKeyId</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">      </span><span class="k">await</span><span class="w"> </span><span class="nx">litellm</span><span class="p">.</span><span class="nx">updateKey</span><span class="p">({</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">        </span><span class="nx">key</span><span class="o">:</span><span class="w"> </span><span class="kt">apiKey.litellmKeyId</span><span class="p">,</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">        </span><span class="nx">maxBudget</span><span class="o">:</span><span class="w"> </span><span class="kt">body.monthlyLimitCents</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="nx">body</span><span class="p">.</span><span class="nx">monthlyLimitCents</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nx">100</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="kt">null</span><span class="p">,</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">      </span><span class="p">});</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="nx">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s2">"Failed to sync monthly limit to LiteLLM:"</span><span class="p">,</span><span class="w"> </span><span class="nx">error</span><span class="p">);</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">    </span><span class="c1">// Fail-open: the DB update already succeeded; log and move on.</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="p">}</span>
 </code></pre></div>
     Fail-open: if LiteLLM is unreachable, the DB is still the source of truth and the next reconciliation pass fixes drift.</li>
 <li><strong>Backfill script</strong> — <code>scripts/backfill-litellm-max-budget.ts</code>:<ul>
@@ -1045,6 +1112,7 @@ Both paths will, in practice, pass <code>undefined</code> for stage 1 because no
 <p><strong>Test member:</strong> Ryan opts in as the first test subject. Cap a dummy <code>ryan-shadow-test@example.com</code> user at $1, run some deliberate remix traffic through his key, verify the alert webhook fires, verify no request is blocked. Remove the cap before moving to stage 3. (See <strong>Open decision 3</strong>.)</p>
 <p><strong>Ship criterion:</strong> one test member exercised the alert path successfully + N days of real traffic on whichever members actually have caps set (which is zero today → we have to seed a test case).</p>
 <p><strong>Rollback:</strong> env var <code>LITELLM_BUDGET_MODE=off</code> and redeploy. soft_budget values are harmless (they don't block), but we can clear them via a one-shot "unset soft_budget everywhere" script if desired.</p>
+<p><a class="glightbox" data-type="image" data-width="100%" data-height="auto" href="../teams-billing-step6-decision-tree.png" data-desc-position="bottom"><img alt="Stage 2 → Stage 3 decision tree — hard guardrails for when the enforcement flip is safe" src="../teams-billing-step6-decision-tree.png"></a></p>
 <h3 id="stage-3-enforce-max_budget-flip">Stage 3 — Enforce (max_budget flip)<a class="headerlink" href="#stage-3-enforce-max_budget-flip" title="Permanent link">¶</a></h3>
 <p><strong>Goal:</strong> actually block over-budget requests at the proxy.</p>
 <p><strong>Changes:</strong></p>
@@ -1056,6 +1124,8 @@ Both paths will, in practice, pass <code>undefined</code> for stage 1 because no
 </ol>
 <p><strong>Ship criterion:</strong> stage 2 telemetry clean; explicit Ryan sign-off; first enforcement target is Ryan himself for a one-day soak before opening to others.</p>
 <p><strong>Rollback:</strong> env flip to <code>LITELLM_BUDGET_MODE=shadow</code> + run the "clear max_budget everywhere, keep soft_budget" reconciliation script. Reverts enforcement in minutes.</p>
+<h3 id="request-time-enforcement-what-actually-happens-when-a-members-cap-is-hit">Request-time enforcement — what actually happens when a member's cap is hit<a class="headerlink" href="#request-time-enforcement-what-actually-happens-when-a-members-cap-is-hit" title="Permanent link">¶</a></h3>
+<p><a class="glightbox" data-type="image" data-width="100%" data-height="auto" href="../teams-billing-step6-request-flow.png" data-desc-position="bottom"><img alt="Request-time enforcement flow — happy path vs over-budget path through the LiteLLM proxy" src="../teams-billing-step6-request-flow.png"></a></p>
 <h2 id="budget-reset-model-native-budget_duration-vs-db-side">Budget reset model: native <code>budget_duration</code> vs DB-side<a class="headerlink" href="#budget-reset-model-native-budget_duration-vs-db-side" title="Permanent link">¶</a></h2>
 <p>LiteLLM supports <code>budget_duration: "30d"</code> which auto-resets the key's spend counter 30 days after the last reset. This is cleaner than the current DB-side <code>checkAndResetBudget</code> logic — the proxy handles it. <strong>Open decision 4.</strong></p>
 <p><strong>Recommendation:</strong> use native LiteLLM <code>budget_duration: "30d"</code>. Pros:</p>
@@ -1156,6 +1226,8 @@ Both paths will, in practice, pass <code>undefined</code> for stage 1 because no
 <li><strong>Team owner alert (Slack or dashboard):</strong> <em>"[Member] is at 80% of their $Y monthly cap ($X spent). [Raise limit] [View usage]"</em></li>
 <li><strong>Team owner when member is at 100%:</strong> <em>"[Member] has reached their $Y monthly cap. They cannot make new requests until [reset date] or you raise their limit."</em></li>
 </ul>
+<h2 id="rollback-paths-every-escape-hatch-by-stage">Rollback paths — every escape hatch by stage<a class="headerlink" href="#rollback-paths-every-escape-hatch-by-stage" title="Permanent link">¶</a></h2>
+<p><a class="glightbox" data-type="image" data-width="100%" data-height="auto" href="../teams-billing-step6-rollback-matrix.png" data-desc-position="bottom"><img alt="Rollback matrix — time-to-rollback, commands, user impact, and authority for each stage" src="../teams-billing-step6-rollback-matrix.png"></a></p>
 <h2 id="risks-mitigations">Risks &amp; mitigations<a class="headerlink" href="#risks-mitigations" title="Permanent link">¶</a></h2>
 <table>
 <thead>
@@ -1233,15 +1305,15 @@ Both paths will, in practice, pass <code>undefined</code> for stage 1 because no
 <li><strong>Total calendar time: ~1 week</strong> from plan approval to full enforcement, gated on shadow-phase observation</li>
 </ul>
 <h2 id="appendix-verification-commands">Appendix — verification commands<a class="headerlink" href="#appendix-verification-commands" title="Permanent link">¶</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># LiteLLM proxy health (confirms MaxBudgetLimiter is loaded)</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer sk-farpoint-litellm"</span><span class="w"> </span>http://69.30.85.97:8000/health/readiness<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Inspect a key's current budget fields</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer sk-farpoint-litellm"</span><span class="w"> </span><span class="s2">"http://69.30.85.97:8000/key/info?key=&lt;key&gt;"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># List keys with non-null max_budget (sanity check during rollout)</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer sk-farpoint-litellm"</span><span class="w"> </span><span class="s2">"http://69.30.85.97:8000/key/list?return_full_object=true&amp;size=200"</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">'.keys[] | select(.max_budget != null) | {user_id, max_budget, spend, soft_budget}'</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># LiteLLM proxy health (confirms MaxBudgetLimiter is loaded)</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer sk-farpoint-litellm"</span><span class="w"> </span>http://69.30.85.97:8000/health/readiness<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Inspect a key's current budget fields</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer sk-farpoint-litellm"</span><span class="w"> </span><span class="s2">"http://69.30.85.97:8000/key/info?key=&lt;key&gt;"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># List keys with non-null max_budget (sanity check during rollout)</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer sk-farpoint-litellm"</span><span class="w"> </span><span class="s2">"http://69.30.85.97:8000/key/list?return_full_object=true&amp;size=200"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">'.keys[] | select(.max_budget != null) | {user_id, max_budget, spend, soft_budget}'</span>
 </code></pre></div>
 
 

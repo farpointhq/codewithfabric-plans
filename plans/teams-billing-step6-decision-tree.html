@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 32px; background: #0a0a0a; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+  .page { max-width: 1380px; margin: 0 auto; color: #e5e5e5; }
+  .page-title { font-size: 24px; font-weight: 800; color: #f3f4f6; margin-bottom: 6px; }
+  .page-sub { font-size: 14px; color: #9ca3af; margin-bottom: 28px; }
+
+  .tree { display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .node { background: #111827; border: 1px solid #374151; border-radius: 10px; padding: 14px 20px; font-size: 13px; color: #e5e5e5; font-weight: 600; text-align: center; min-width: 260px; box-shadow: 0 1px 0 rgba(255,255,255,0.03); }
+  .node.question { border-color: #4338ca; background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); color: #a5b4fc; min-width: 340px; }
+  .node.question .q-sub { display: block; font-size: 11px; color: #818cf8; font-weight: 400; margin-top: 3px; font-style: italic; }
+  .node.block { border-color: #991b1b; background: rgba(239, 68, 68, 0.1); color: #fca5a5; }
+  .node.wait  { border-color: #ca8a04; background: rgba(251, 191, 36, 0.1); color: #fcd34d; }
+  .node.go    { border-color: #15803d; background: rgba(34, 197, 94, 0.12); color: #86efac; }
+  .node .n-sub { display: block; font-size: 11px; font-weight: 400; color: inherit; opacity: 0.85; margin-top: 3px; }
+
+  .edge { width: 2px; height: 22px; background: #374151; }
+  .split { display: flex; gap: 60px; align-items: flex-start; }
+
+  .label-edge { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .label-edge .edge-label { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; color: #818cf8; padding: 3px 10px; background: #1e1b4b; border-radius: 999px; border: 1px solid #4338ca; text-transform: uppercase; }
+  .label-edge.yes .edge-label { color: #4ade80; background: rgba(34, 197, 94, 0.12); border-color: #15803d; }
+  .label-edge.no .edge-label { color: #f87171; background: rgba(239, 68, 68, 0.12); border-color: #991b1b; }
+
+  .legend { margin-top: 32px; background: #111827; border: 1px solid #1f2937; border-radius: 10px; padding: 16px 20px; }
+  .legend-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: #9ca3af; margin-bottom: 12px; text-transform: uppercase; }
+  .legend-row { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: #d1d5db; line-height: 1.5; }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .legend-pill { padding: 3px 10px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
+  .lp-block { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid #991b1b; }
+  .lp-wait  { background: rgba(251, 191, 36, 0.15); color: #fcd34d; border: 1px solid #ca8a04; }
+  .lp-go    { background: rgba(34, 197, 94, 0.15); color: #86efac; border: 1px solid #15803d; }
+</style></head><body>
+<div class="page">
+  <div class="page-title">Stage 2 → Stage 3 Decision Tree</div>
+  <div class="page-sub">Guardrails for when it's safe to flip from shadow to enforcement. If any check returns "no", we do not advance.</div>
+
+  <div class="tree">
+    <div class="node question">Has stage 2 been live for ≥ 3 days?<span class="q-sub">Minimum soak window</span></div>
+    <div class="edge"></div>
+    <div class="split">
+      <div class="label-edge no"><div class="edge-label">No</div></div>
+      <div class="label-edge yes"><div class="edge-label">Yes</div></div>
+    </div>
+    <div class="split" style="gap:120px; margin-top:-4px;">
+      <div style="display:flex; flex-direction:column; align-items:center;">
+        <div class="edge"></div>
+        <div class="node wait">WAIT<span class="n-sub">Re-check daily</span></div>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:center;">
+        <div class="edge"></div>
+        <div class="node question">Has at least one real member generated an alert?<span class="q-sub">Otherwise there's no telemetry to judge by</span></div>
+        <div class="edge"></div>
+        <div class="split">
+          <div class="label-edge no"><div class="edge-label">No</div></div>
+          <div class="label-edge yes"><div class="edge-label">Yes</div></div>
+        </div>
+        <div class="split" style="gap:120px; margin-top:-4px;">
+          <div style="display:flex; flex-direction:column; align-items:center;">
+            <div class="edge"></div>
+            <div class="node wait">SEED TEST MEMBER<span class="n-sub">Ryan at $1 cap, generate traffic</span></div>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:center;">
+            <div class="edge"></div>
+            <div class="node question">Did any alert fire on a member who still had headroom?<span class="q-sub">Reconciliation against spend snapshots</span></div>
+            <div class="edge"></div>
+            <div class="split">
+              <div class="label-edge yes"><div class="edge-label">Yes (any FP)</div></div>
+              <div class="label-edge no"><div class="edge-label">No</div></div>
+            </div>
+            <div class="split" style="gap:100px; margin-top:-4px;">
+              <div style="display:flex; flex-direction:column; align-items:center;">
+                <div class="edge"></div>
+                <div class="node block">BLOCK &amp; DEBUG<span class="n-sub">Root-cause, do not advance</span></div>
+              </div>
+              <div style="display:flex; flex-direction:column; align-items:center;">
+                <div class="edge"></div>
+                <div class="node question">Has Ryan signed off on the enforcement flip?<span class="q-sub">Human-in-the-loop gate</span></div>
+                <div class="edge"></div>
+                <div class="split">
+                  <div class="label-edge no"><div class="edge-label">No</div></div>
+                  <div class="label-edge yes"><div class="edge-label">Yes</div></div>
+                </div>
+                <div class="split" style="gap:80px; margin-top:-4px;">
+                  <div style="display:flex; flex-direction:column; align-items:center;">
+                    <div class="edge"></div>
+                    <div class="node wait">HOLD<span class="n-sub">Await explicit approval</span></div>
+                  </div>
+                  <div style="display:flex; flex-direction:column; align-items:center;">
+                    <div class="edge"></div>
+                    <div class="node go">FLIP TO ENFORCE<span class="n-sub">Env var → <code>enforce</code>, soak with Ryan for 1 day first</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-title">Terminal outcomes</div>
+    <div class="legend-row">
+      <div class="legend-item"><span class="legend-pill lp-block">BLOCK &amp; DEBUG</span>A false positive happened. Do not advance until root cause is understood and the check is added as a regression guard.</div>
+      <div class="legend-item"><span class="legend-pill lp-wait">WAIT / SEED / HOLD</span>Non-terminal. Re-evaluate tomorrow or take the named action.</div>
+      <div class="legend-item"><span class="legend-pill lp-go">FLIP TO ENFORCE</span>All guards green. Soak 1 day with Ryan as first real subject before opening to others.</div>
+    </div>
+  </div>
+</div>
+</body></html>

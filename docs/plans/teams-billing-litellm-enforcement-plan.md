@@ -1,13 +1,46 @@
-# Teams Billing — LiteLLM Per-Member Cap Enforcement Plan
+# Teams Billing — LiteLLM Enforcement Plan (Budget Caps + Tier Access)
 
 > Step 6 of the [teams-billing architecture plan](./teams-billing-architecture-plan.md).
 > Written: 2026-04-15. Status: DRAFT — awaiting Ryan approval before any code lands.
+> **Scope expanded 2026-04-15** to also cover tier-access leak (see "Two enforcement dimensions" below).
 
 ## TL;DR
 
-`TeamMember.monthlyLimitCents` is theater — it's saved, displayed, and logged post-hoc, but the LiteLLM proxy never learns about it. A member with a $50 cap can burn $5,000 and all they get is a `console.warn`. This plan wires the field to LiteLLM's native `max_budget` enforcement, with a three-stage rollout that uses LiteLLM's `soft_budget` field as the built-in shadow phase — meaning we get alerts-only observability before enforcement without any app-level fail-open hacks.
+`TeamMember.monthlyLimitCents` is theater — it's saved, displayed, and logged post-hoc, but the LiteLLM proxy never learns about it. A member with a $50 cap can burn $5,000 and all they get is a `console.warn`. **Separately but through the same broken wiring**, every LiteLLM key is born with `models: []` meaning no tier restriction — a MEDIUM-plan customer can call `fabric-large` unrestricted. This plan wires BOTH gaps to LiteLLM's native enforcement (one pass through the same 3 call sites), with a three-stage rollout that uses LiteLLM's `soft_budget` field as the built-in shadow phase for budget enforcement and an app-level log-only branch for the tier-access shadow.
 
 **Hard constraint (non-negotiable):** production has real paying users. We never ship a change that can false-positive block them. Every stage is reversible; the enforcement flip happens only after the shadow stage shows zero false-positive candidates.
+
+## Two enforcement dimensions (scope expansion — 2026-04-15)
+
+![Two enforcement dimensions — every LiteLLM key has a budget cap AND a model allow-list, both broken](./teams-billing-step6-two-dimensions.png)
+
+While investigating the budget-cap wiring, a second enforcement gap surfaced: **`billing.ts::getAllowedModelsForTier`** (line 68) is a complete helper that returns the correct per-tier model whitelist and whose own comment says *"used to restrict LiteLLM API keys at the proxy level"* — but the function is **never called anywhere**. Dead code. The intent was to wire `models: ["fabric-small", "fabric-medium"]` into `litellm.generateKey`/`updateKey` for MEDIUM-tier members, but that wiring was never completed.
+
+**Empirically verified on prod (2026-04-15):**
+
+```
+user: devin.durrant@gmail.com  (unlimitedTier = MEDIUM)
+key 454b846af04919:  models=[]  max_budget=None  soft_budget=None
+```
+
+Devin is on a Medium plan. His key has no model restriction and no budget cap. He can call `fabric-large` right now and the only response from our system is a post-hoc `shouldDecrementBalance` entry in the callback handler that tries to charge pay-as-you-go rates — the actual inference already happened. This is a leak, not a billing error.
+
+**Blast radius today: 2 customer accounts on sub-LARGE Unlimited plans:**
+
+- `ryan@monsurate.com` (Ryan — self, ideal first test subject)
+- `devin.durrant@gmail.com` (real paying customer — coordinate directly before stage 3 flip)
+
+Every other Unlimited account is LARGE, meaning no model restriction to apply.
+
+**Why fold this into step 6 instead of a separate plan:**
+
+- Same call sites — `litellm.generateKey`/`updateKey` already accept a `models: string[]` parameter, it's the same 2+1 locations as the budget wiring
+- Same rollout shape — wire → shadow → enforce, same three stages, same env-var rollback
+- Same constraint — "no false positives on paying users" applies identically
+- Same infrastructure — LiteLLM proxy, same key records, same reconciliation cron
+- The dead code (`getAllowedModelsForTier`) already exists. We are completing someone's half-built work, not inventing something new.
+
+**The one asymmetry:** LiteLLM has no native "soft_models" analog to `soft_budget`. The tier-access shadow stage has to be app-level — extend `/api/litellm/callback` to detect "member called a model outside their tier", log a `BudgetAlert` row with `kind = TIER_LEAK`, and don't add a pre-request gate until stage 3. Budget caps and tier access use the same rollout gates but different shadow mechanisms.
 
 ![Current vs Target data flow — why monthlyLimitCents is theater today and what wiring it looks like after step 6](./teams-billing-step6-current-vs-target.png)
 
@@ -35,7 +68,9 @@
 - LiteLLM supports `soft_budget` (alert webhooks, no block), `max_budget` (hard block), and `budget_duration` (auto-reset cadence) natively on keys.
 - `_PROXY_MaxBudgetPerSessionHandler` is also loaded if we ever want per-session limits.
 
-**Blast radius today: zero.** The only team with members is Farpoint HQ (owned by `ryan@farpointhq.com`, 8 employee members added 2026-04-14). No one has `monthlyLimitCents` set. This means stages 1 and 2 can ship without affecting a single customer. Stage 3 (the enforcement flip) also ships affecting nobody until an owner explicitly sets a cap on someone, because we default `max_budget: null` at key creation.
+**Blast radius today — budget dimension: zero.** The only team with members is Farpoint HQ (owned by `ryan@farpointhq.com`, 8 employee members added 2026-04-14). No one has `monthlyLimitCents` set. Stages 1 and 2 ship without affecting a single customer on the budget dimension. Stage 3 ships affecting nobody on budget until an owner explicitly sets a cap.
+
+**Blast radius today — tier dimension: 2 customer accounts.** `ryan@monsurate.com` (self) and `devin.durrant@gmail.com` are on MEDIUM Unlimited. Their keys currently have `models: []` (unrestricted). Stage 3 on the tier dimension will affect exactly these 2 keys. Ryan is the natural first test subject; Devin requires out-of-band coordination before the flip.
 
 ## Architecture: three-stage rollout
 
@@ -55,12 +90,21 @@ The reason we don't need an app-level fail-open wrapper is that LiteLLM already 
 
 **Changes:**
 
-1. **Extend `lib/litellm.ts`** — `generateKey` and `updateKey` already accept `maxBudget`; add `softBudget`, `budgetDuration`, and `budgetResetAt` pass-throughs.
-2. **Wire `maxBudget` at key generation** (two sites):
-    - `src/app/api/team/invitations/[token]/accept/route.ts:77` — pass `maxBudget: member.monthlyLimitCents != null ? member.monthlyLimitCents / 100 : undefined`
-    - `src/app/api/keys/generate/route.ts:52` — same
-    Both paths will, in practice, pass `undefined` for stage 1 because no member has a cap set. This is deliberate — we're testing that the plumbing works, not flipping enforcement.
-3. **Wire `maxBudget` sync on cap update** — add a block in `PATCH /api/team/members/[memberId]` mirroring the existing `rateLimitRpm` sync around line 157:
+1. **Extend `lib/litellm.ts`** — `generateKey` and `updateKey` already accept `maxBudget` and `models`; add `softBudget`, `budgetDuration`, and `budgetResetAt` pass-throughs. Everything else is already in the signature.
+2. **Wire `maxBudget` AND `models` at key generation** (two sites):
+    - `src/app/api/team/invitations/[token]/accept/route.ts:77` — pass both:
+      ```ts
+      const tier = member.unlimitedTier ?? team.unlimitedTier;
+      const models = tier ? getAllowedModelsForTier(tier) ?? undefined : undefined;
+      await litellm.generateKey({
+        userId, keyName, teamId,
+        maxBudget: member.monthlyLimitCents != null ? member.monthlyLimitCents / 100 : undefined,
+        models,  // undefined = no restriction (LARGE), array = restricted to named models
+      });
+      ```
+    - `src/app/api/keys/generate/route.ts:52` — same pattern
+    Both paths will, in practice, pass `undefined` for **budget** during stage 1 (nobody has caps), but **models** will begin taking effect for new Medium-tier keys minted after stage 1 ships. Since Medium-tier key generation is rare (2 accounts total, both already have keys), this is low-risk — but see the stage 1 shadow note below.
+3. **Wire `maxBudget` AND `models` sync on update** — add a block in `PATCH /api/team/members/[memberId]` mirroring the existing `rateLimitRpm` sync around line 157. Triggered when `body.monthlyLimitCents` OR `body.unlimitedTier` changes:
     ```ts
     if (body.monthlyLimitCents !== undefined) {
       try {
@@ -78,12 +122,14 @@ The reason we don't need an app-level fail-open wrapper is that LiteLLM already 
     }
     ```
     Fail-open: if LiteLLM is unreachable, the DB is still the source of truth and the next reconciliation pass fixes drift.
-4. **Backfill script** — `scripts/backfill-litellm-max-budget.ts`:
-    - For every `TeamMember` row with non-null `monthlyLimitCents`, push `maxBudget` to their current LiteLLM key via `litellm.updateKey`.
+4. **Backfill script** — `scripts/backfill-litellm-enforcement.ts`:
+    - For every `TeamMember` row: push `maxBudget` (if non-null) AND `models` (per current tier) to their LiteLLM key via `litellm.updateKey`.
+    - For every `ApiKey` owned by a user whose team is Unlimited at a sub-LARGE tier: same.
     - Idempotent. Re-running is a no-op.
-    - Today, this script finds **zero rows** to update. It's scaffolding for the day someone sets a cap.
+    - Today, the budget side of the script finds **zero rows** to update, but the models side affects **2 keys** (Ryan's and Devin's). **Critical:** running the backfill ships tier enforcement without the shadow phase unless we gate the models update on `LITELLM_BUDGET_MODE != off`.
+5. **Important asymmetry in stage 1:** because `getAllowedModelsForTier("MEDIUM")` returns `["fabric-small", "fabric-medium"]`, any key we write with those models becomes *immediately enforcing* at the proxy — there is no `soft_models` field. We must NOT apply the models field during stage 1. Stage 1 wires the plumbing for models only at new-key creation for NEW users (of which there will be ~zero today, and any new signup won't have an Unlimited tier yet). Stage 1's backfill script is budget-only until stage 2.
 
-**Ship criterion:** plan approved, PR green, preview test confirms key generation on a freshly-invited test member still works end-to-end.
+**Ship criterion:** plan approved, PR green, preview test confirms key generation on a freshly-invited test member still works end-to-end (budget side is null, models side is null for a new user with no tier yet).
 
 **Rollback:** revert the PR. No DB or LiteLLM state changes to undo since all the values we'd push during stage 1 are `null`.
 
@@ -96,10 +142,43 @@ The reason we don't need an app-level fail-open wrapper is that LiteLLM already 
 **Changes:**
 
 1. **Flag-gated stage** — introduce `LITELLM_BUDGET_MODE` env var with values `off` (stage 1 default), `shadow` (stage 2), `enforce` (stage 3).
-2. **In `stage=shadow`:** when pushing a cap to LiteLLM, send `soft_budget: cents / 100` instead of `max_budget`. Leave `max_budget: null`.
-3. **Wire the `/api/litellm/budget-alerts` webhook** (new route) to receive soft-budget alerts from LiteLLM. Store each alert in a new `BudgetAlert` table (`id, memberId, teamId, keyHash, spendCents, thresholdCents, firedAt, stage, wouldHaveBlocked: true`). Also log to Slack `#billing-alerts`.
-4. **Dashboard widget** — "Members approaching / over their monthly limit" with alert history. Team owner only. Read-only.
-5. **Shadow criterion for flipping to stage 3:** N days (concrete value TBD — see **Open decision 1**) with at least one member having a real cap set, producing zero alerts that would have been false positives. "False positive" = an alert fired on a member who still had budget headroom at the time of the request, per our reconciliation logic.
+2. **Budget shadow (native):** when pushing a cap to LiteLLM, send `soft_budget: cents / 100` instead of `max_budget`. Leave `max_budget: null`. LiteLLM fires `budget_alerts` webhook, nothing blocks.
+3. **Tier-access shadow (app-level, because no native analog):** leave LiteLLM key `models` field as `[]` but extend `/api/litellm/callback` to detect tier violations in the already-received usage records:
+    ```ts
+    // New branch in callback handler
+    const effectiveTier = higherTier(team.unlimitedTier, member?.unlimitedTier);
+    if (effectiveTier && !isModelCoveredByTier(model, effectiveTier)) {
+      await prisma.budgetAlert.create({
+        data: { memberId: member.id, teamId: team.id, kind: "TIER_LEAK",
+                model, tierAtTime: effectiveTier, stage: "SHADOW" }
+      });
+      // Also Slack notify
+    }
+    ```
+    This fires a row (and Slack message) when a Medium-tier user calls fabric-large — but the request has already succeeded. It's logging-only, exactly what we want from shadow mode.
+4. **Wire the `/api/litellm/budget-alerts` webhook** (new route) to receive soft-budget alerts from LiteLLM. Store each alert in the same `BudgetAlert` table with `kind = "BUDGET_SOFT"`.
+5. **New `BudgetAlert` Prisma model:**
+    ```prisma
+    model BudgetAlert {
+      id             String   @id @default(cuid())
+      kind           AlertKind  // BUDGET_SOFT | BUDGET_HARD | TIER_LEAK
+      stage          String     // SHADOW | ENFORCE
+      memberId       String?
+      teamId         String
+      keyHash        String?    // last 14 chars of LiteLLM key token
+      model          String?    // tier-leak: which model was called
+      tierAtTime     String?    // tier-leak: what tier they had
+      spendCents     Int?       // budget-soft: how much they'd spent
+      thresholdCents Int?       // budget-soft: what the cap was
+      firedAt        DateTime @default(now())
+    }
+    enum AlertKind { BUDGET_SOFT BUDGET_HARD TIER_LEAK }
+    ```
+6. **Dashboard widget** — "Members approaching / over their monthly limit" and "Members calling off-tier models" with alert history. Team owner only. Read-only.
+7. **Shadow criterion for flipping to stage 3:** N days (see **Open decision 1**) with:
+    - At least one member having a real budget cap set, producing zero budget false positives, AND
+    - At least one member on a Medium tier actually generating a `TIER_LEAK` alert (for tier), or Ryan confirming via manual test
+    - "False positive" = an alert fired on a request where the reconciliation check says the member still had headroom / was actually allowed that model at the time of the request.
 
 **Test member:** Ryan opts in as the first test subject. Cap a dummy `ryan-shadow-test@example.com` user at $1, run some deliberate remix traffic through his key, verify the alert webhook fires, verify no request is blocked. Remove the cap before moving to stage 3. (See **Open decision 3**.)
 
@@ -115,14 +194,27 @@ The reason we don't need an app-level fail-open wrapper is that LiteLLM already 
 
 **Changes:**
 
-1. **Env flip:** `LITELLM_BUDGET_MODE=enforce`. From now on, every push sends `max_budget: cents / 100` AND `soft_budget: cents / 100 * 0.8` (soft alert at 80% of hard cap, so team owners get a heads-up before their members hit the wall).
-2. **Backfill-in-place migration:** one-time script reads every member with `monthlyLimitCents` set and pushes `max_budget` to their LiteLLM key. Idempotent.
-3. **Error handling in the remix / chat paths:** when LiteLLM returns the over-budget error (need to verify exact error shape — see **Open decision 2**), catch it and translate it to a user-facing response with clear copy: *"You've reached your monthly $X limit. Contact your team owner to request more."* Never let the raw LiteLLM error surface to end users.
-4. **Dashboard UX:** member view shows "Over limit — contact owner" with a contact CTA. Team owner view shows "Raise limit" button inline with the alert.
+1. **Env flip:** `LITELLM_BUDGET_MODE=enforce`. From now on, every push sends:
+    - `max_budget: cents / 100` (hard ceiling)
+    - `soft_budget: cents / 100 * 0.8` (80% early warning)
+    - `models: getAllowedModelsForTier(tier) ?? undefined` (tier restriction — `undefined` for LARGE, array for MEDIUM/SMALL)
+2. **Backfill-in-place migration:** re-run `scripts/backfill-litellm-enforcement.ts` — this time with models enabled. Touches **exactly 2 keys** in prod today: Ryan's and Devin's. Both Medium-tier.
+    - **Order of operations** (critical for avoiding false positives):
+        1. Coordinate with Devin out-of-band ("we're enforcing tier access tomorrow — let us know if you've been using fabric-large and want to upgrade")
+        2. Run backfill against Ryan's key first (self-test)
+        3. Run backfill against Devin's key only after Ryan's key is verified working
+        4. 24-hour soak, watch Slack for any support tickets
+3. **Error handling in the remix / chat paths:** when LiteLLM returns the over-budget OR off-tier error (need to verify exact error shapes — see **Open decision 2**), catch and translate:
+    - Budget exceeded: *"You've reached your monthly $X limit. Contact your team owner to request more."*
+    - Model not allowed: *"Your plan includes fabric-medium but not fabric-large. Upgrade to Large or use a covered model."* + link to billing page
+4. **Dashboard UX:**
+    - Member hitting budget cap: "Over limit — contact owner"
+    - Member hitting tier restriction: "Your plan doesn't include this model" + upgrade CTA
+    - Team owner: alert inline with raise-limit / upgrade-tier buttons
 
-**Ship criterion:** stage 2 telemetry clean; explicit Ryan sign-off; first enforcement target is Ryan himself for a one-day soak before opening to others.
+**Ship criterion:** stage 2 telemetry clean for both budget AND tier alerts; explicit Ryan sign-off; first enforcement target is Ryan's own `ryan@monsurate.com` Medium key for a one-day soak before applying to Devin's key.
 
-**Rollback:** env flip to `LITELLM_BUDGET_MODE=shadow` + run the "clear max_budget everywhere, keep soft_budget" reconciliation script. Reverts enforcement in minutes.
+**Rollback:** env flip to `LITELLM_BUDGET_MODE=shadow` + run `scripts/litellm-clear-enforcement.ts` which removes both `max_budget` and `models` restrictions from all keys (leaving `soft_budget` intact for observability). Reverts enforcement in minutes on both dimensions simultaneously.
 
 ### Request-time enforcement — what actually happens when a member's cap is hit
 
@@ -146,17 +238,19 @@ This is Open decision 4 below.
 
 ## Call-site map
 
-| File | Line | Change | Stage |
-|------|------|--------|-------|
-| `src/lib/litellm.ts` | 84-119 | Extend `generateKey`/`updateKey` to accept `softBudget`, `budgetDuration` | 1 |
-| `src/app/api/team/invitations/[token]/accept/route.ts` | 77 | Pass `maxBudget` (or `softBudget` in stage 2) | 1 → 2 → 3 |
-| `src/app/api/keys/generate/route.ts` | 52 | Same | 1 → 2 → 3 |
-| `src/app/api/team/members/[memberId]/route.ts` | ~157 | New sync block mirroring `rateLimitRpm` | 1 |
-| `src/app/api/litellm/callback/route.ts` | 209-244 | Leave alone in stage 1. Stage 3: translate proxy over-budget error if it arrives here. | 3 |
-| `src/app/api/litellm/budget-alerts/route.ts` | NEW | Webhook receiver for soft-budget alerts | 2 |
-| `src/lib/litellm.ts` | — | New `budgetMode()` reading `process.env.LITELLM_BUDGET_MODE` | 2 |
-| `scripts/backfill-litellm-max-budget.ts` | NEW | Idempotent backfill | 1, 3 |
-| `prisma/schema.prisma` | NEW model | `BudgetAlert` table | 2 |
+| File | Line | Change | Stage | Dim |
+|------|------|--------|-------|-----|
+| `src/lib/litellm.ts` | 84-119 | Extend `generateKey`/`updateKey` with `softBudget`, `budgetDuration` params | 1 | $ |
+| `src/app/api/team/invitations/[token]/accept/route.ts` | 77 | Pass `maxBudget` + `models` (gated by mode) | 1 → 2 → 3 | $ + tier |
+| `src/app/api/keys/generate/route.ts` | 52 | Same | 1 → 2 → 3 | $ + tier |
+| `src/app/api/team/members/[memberId]/route.ts` | ~157 | New sync block for `monthlyLimitCents` AND `unlimitedTier` changes (triggers `models` re-sync) | 1 | $ + tier |
+| `src/app/api/litellm/callback/route.ts` | 209-244 | Leave budget path alone in stage 1. **Stage 2**: add tier-leak detection branch using `isModelCoveredByTier`. **Stage 3**: translate proxy over-budget / off-tier errors if they arrive here. | 2, 3 | tier shadow, $ + tier enforce |
+| `src/app/api/litellm/budget-alerts/route.ts` | NEW | Webhook receiver for LiteLLM `budget_alerts` (soft_budget fires) | 2 | $ |
+| `src/lib/litellm.ts` | — | New `budgetMode()` reading `process.env.LITELLM_BUDGET_MODE` | 2 | both |
+| `src/lib/billing.ts` | 68 | Existing `getAllowedModelsForTier` — now actually called from the generate/update sites | 1 (stub), 3 (live) | tier |
+| `scripts/backfill-litellm-enforcement.ts` | NEW | Idempotent backfill for BOTH budget and models | 1 (budget only), 3 (+ models) | $ + tier |
+| `scripts/litellm-clear-enforcement.ts` | NEW | Rollback script — clears both fields | rollback | $ + tier |
+| `prisma/schema.prisma` | NEW model | `BudgetAlert` table with `kind: BUDGET_SOFT | BUDGET_HARD | TIER_LEAK` | 2 | both |
 
 ## Testing approach
 

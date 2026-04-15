@@ -9,6 +9,8 @@
 
 **Hard constraint (non-negotiable):** production has real paying users. We never ship a change that can false-positive block them. Every stage is reversible; the enforcement flip happens only after the shadow stage shows zero false-positive candidates.
 
+![Current vs Target data flow — why monthlyLimitCents is theater today and what wiring it looks like after step 6](./teams-billing-step6-current-vs-target.png)
+
 ## Current state (investigation, 2026-04-14)
 
 **What works:**
@@ -37,13 +39,15 @@
 
 ## Architecture: three-stage rollout
 
-```
-Stage 1 — Wiring & Backfill         [safe: writes null budgets, no enforcement effect]
-Stage 2 — Shadow (soft_budget only) [safe: alerts fire, nothing blocks]
-Stage 3 — Enforce (max_budget flip) [ship only after stage 2 shows zero false positives]
-```
+![Three-stage rollout plan — wiring, shadow, enforce — with hard gates between each stage](./teams-billing-step6-rollout-stages.png)
 
 Each stage is an independent PR, reviewed separately, with its own rollback path.
+
+### Why soft_budget vs max_budget matters
+
+The reason we don't need an app-level fail-open wrapper is that LiteLLM already distinguishes the two semantics at the proxy level. This is the core insight of the rollout shape:
+
+![LiteLLM native budget fields — soft_budget vs max_budget vs budget_duration semantics matrix](./teams-billing-step6-soft-vs-max.png)
 
 ### Stage 1 — Wiring & Backfill
 
@@ -103,6 +107,8 @@ Each stage is an independent PR, reviewed separately, with its own rollback path
 
 **Rollback:** env var `LITELLM_BUDGET_MODE=off` and redeploy. soft_budget values are harmless (they don't block), but we can clear them via a one-shot "unset soft_budget everywhere" script if desired.
 
+![Stage 2 → Stage 3 decision tree — hard guardrails for when the enforcement flip is safe](./teams-billing-step6-decision-tree.png)
+
 ### Stage 3 — Enforce (max_budget flip)
 
 **Goal:** actually block over-budget requests at the proxy.
@@ -117,6 +123,10 @@ Each stage is an independent PR, reviewed separately, with its own rollback path
 **Ship criterion:** stage 2 telemetry clean; explicit Ryan sign-off; first enforcement target is Ryan himself for a one-day soak before opening to others.
 
 **Rollback:** env flip to `LITELLM_BUDGET_MODE=shadow` + run the "clear max_budget everywhere, keep soft_budget" reconciliation script. Reverts enforcement in minutes.
+
+### Request-time enforcement — what actually happens when a member's cap is hit
+
+![Request-time enforcement flow — happy path vs over-budget path through the LiteLLM proxy](./teams-billing-step6-request-flow.png)
 
 ## Budget reset model: native `budget_duration` vs DB-side
 
@@ -165,6 +175,10 @@ This is Open decision 4 below.
 - **Member over hard limit:** *"You've used $X of your $Y monthly limit. Ask [Owner Name] to raise your limit or wait until your budget resets on [date]."*
 - **Team owner alert (Slack or dashboard):** *"[Member] is at 80% of their $Y monthly cap ($X spent). [Raise limit] [View usage]"*
 - **Team owner when member is at 100%:** *"[Member] has reached their $Y monthly cap. They cannot make new requests until [reset date] or you raise their limit."*
+
+## Rollback paths — every escape hatch by stage
+
+![Rollback matrix — time-to-rollback, commands, user impact, and authority for each stage](./teams-billing-step6-rollback-matrix.png)
 
 ## Risks & mitigations
 

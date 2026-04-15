@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 32px; background: #0a0a0a; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+  .page { max-width: 1580px; margin: 0 auto; color: #e5e5e5; }
+  .page-title { font-size: 24px; font-weight: 800; color: #f3f4f6; margin-bottom: 6px; }
+  .page-sub { font-size: 14px; color: #9ca3af; margin-bottom: 28px; }
+
+  .timeline { display: flex; gap: 0; align-items: stretch; }
+  .stage { flex: 1; position: relative; padding: 22px; border-radius: 14px; margin-right: 0; }
+  .stage + .stage { margin-left: -2px; }
+
+  .s1 { background: linear-gradient(135deg, #0a1e2e 0%, #0c2542 100%); border: 1px solid #1e40af; }
+  .s2 { background: linear-gradient(135deg, #1e1a0d 0%, #3a2d12 100%); border: 1px solid #ca8a04; margin: 0 8px; }
+  .s3 { background: linear-gradient(135deg, #0c1f14 0%, #0f3322 100%); border: 1px solid #15803d; }
+
+  .stage-num { display: inline-block; font-size: 10px; padding: 3px 10px; border-radius: 999px; font-weight: 700; letter-spacing: 1px; margin-bottom: 10px; }
+  .s1 .stage-num { background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.4); }
+  .s2 .stage-num { background: rgba(251, 191, 36, 0.2); color: #fcd34d; border: 1px solid rgba(251, 191, 36, 0.4); }
+  .s3 .stage-num { background: rgba(34, 197, 94, 0.2); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.4); }
+
+  .stage-title { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+  .s1 .stage-title { color: #93c5fd; }
+  .s2 .stage-title { color: #fcd34d; }
+  .s3 .stage-title { color: #86efac; }
+
+  .stage-sub { font-size: 12px; color: #9ca3af; margin-bottom: 16px; font-style: italic; }
+
+  .section-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: #6b7280; text-transform: uppercase; margin: 14px 0 8px; }
+
+  .what { list-style: none; padding: 0; margin: 0; font-size: 12px; line-height: 1.6; color: #d1d5db; }
+  .what li { padding: 4px 0 4px 16px; position: relative; }
+  .what li::before { content: '▸'; position: absolute; left: 0; color: #6366f1; font-size: 11px; }
+
+  .what li code, .chip code { background: rgba(99, 102, 241, 0.12); color: #c4b5fd; padding: 1px 5px; border-radius: 3px; font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+
+  .effect { margin-top: 12px; padding: 10px; border-radius: 8px; font-size: 12px; }
+  .s1 .effect { background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); }
+  .s2 .effect { background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.25); }
+  .s3 .effect { background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.25); }
+  .effect-label { font-weight: 700; font-size: 10px; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .s1 .effect-label { color: #93c5fd; }
+  .s2 .effect-label { color: #fcd34d; }
+  .s3 .effect-label { color: #86efac; }
+  .effect-body { color: #d1d5db; line-height: 1.5; }
+
+  .gate { display: flex; align-items: center; justify-content: center; width: 58px; position: relative; }
+  .gate-inner { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 10px; letter-spacing: 1px; color: #6b7280; font-weight: 700; text-transform: uppercase; padding: 24px 0; text-align: center; line-height: 1.4; }
+  .gate::before, .gate::after { content: ''; position: absolute; left: 50%; transform: translateX(-50%); width: 2px; background: #374151; }
+  .gate::before { top: 0; height: 30%; }
+  .gate::after { bottom: 0; height: 30%; }
+  .gate-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 22px; height: 22px; border-radius: 50%; background: #1f2937; border: 2px solid #6366f1; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #a5b4fc; font-weight: 700; }
+
+  .blast { margin-top: 24px; padding: 14px 18px; background: #111827; border: 1px solid #1f2937; border-radius: 10px; }
+  .blast-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: #9ca3af; margin-bottom: 10px; text-transform: uppercase; }
+  .blast-row { display: flex; gap: 0; align-items: center; font-size: 12px; }
+  .blast-cell { flex: 1; padding: 8px 14px; color: #d1d5db; text-align: center; }
+  .blast-cell.s1 { border-left: 3px solid #3b82f6; background: rgba(59, 130, 246, 0.06); }
+  .blast-cell.s2 { border-left: 3px solid #fbbf24; background: rgba(251, 191, 36, 0.06); margin: 0 8px; }
+  .blast-cell.s3 { border-left: 3px solid #10b981; background: rgba(34, 197, 94, 0.06); }
+  .blast-cell b { color: #f3f4f6; display: block; margin-bottom: 2px; }
+</style></head><body>
+<div class="page">
+  <div class="page-title">Step 6 — Three-Stage Rollout Plan</div>
+  <div class="page-sub">Every stage is reversible via env var. Each gate is a hard checkpoint — we do not advance until the previous stage has proven safe.</div>
+
+  <div class="timeline">
+    <div class="stage s1">
+      <div class="stage-num">STAGE 1</div>
+      <div class="stage-title">Wiring &amp; Backfill</div>
+      <div class="stage-sub">Plumbing only. No enforcement. Ships to anyone, any time.</div>
+
+      <div class="section-label">What changes</div>
+      <ul class="what">
+        <li>Extend <code>lib/litellm.ts</code> with <code>softBudget</code>, <code>budgetDuration</code> params</li>
+        <li>Pass <code>maxBudget</code> in <code>generateKey</code> at invite-accept + key-generate</li>
+        <li>Add <code>maxBudget</code> sync in <code>PATCH members/[id]</code> mirroring <code>rateLimitRpm</code></li>
+        <li>Idempotent backfill script</li>
+        <li><code>LITELLM_BUDGET_MODE=off</code></li>
+      </ul>
+
+      <div class="effect">
+        <div class="effect-label">NET EFFECT</div>
+        <div class="effect-body">Every push is <code>null</code> because nobody has caps set. Pure scaffolding. Zero user-facing behavior change.</div>
+      </div>
+    </div>
+
+    <div class="gate">
+      <div class="gate-icon">1→2</div>
+      <div class="gate-inner">Plumbing green · test invite works</div>
+    </div>
+
+    <div class="stage s2">
+      <div class="stage-num">STAGE 2 — SHADOW</div>
+      <div class="stage-title">soft_budget only</div>
+      <div class="stage-sub">Alerts fire. Nothing blocks. LiteLLM-native shadow mode.</div>
+
+      <div class="section-label">What changes</div>
+      <ul class="what">
+        <li>Set <code>LITELLM_BUDGET_MODE=shadow</code></li>
+        <li>Code pushes <code>soft_budget: cents/100</code>, leaves <code>max_budget: null</code></li>
+        <li>New <code>POST /api/litellm/budget-alerts</code> webhook receiver</li>
+        <li>New <code>BudgetAlert</code> Prisma model for alert history</li>
+        <li>Slack <code>#billing-alerts</code> + dashboard widget for team owners</li>
+      </ul>
+
+      <div class="effect">
+        <div class="effect-label">NET EFFECT</div>
+        <div class="effect-body">Test member (Ryan, $1 cap) generates would-have-blocked alerts. Real members with real caps produce telemetry. <b>Zero user blocks.</b></div>
+      </div>
+    </div>
+
+    <div class="gate">
+      <div class="gate-icon">2→3</div>
+      <div class="gate-inner">Min 3 days · zero false positives · Ryan sign-off</div>
+    </div>
+
+    <div class="stage s3">
+      <div class="stage-num">STAGE 3 — ENFORCE</div>
+      <div class="stage-title">max_budget flip</div>
+      <div class="stage-sub">Real enforcement. Ryan first, then open to others.</div>
+
+      <div class="section-label">What changes</div>
+      <ul class="what">
+        <li>Set <code>LITELLM_BUDGET_MODE=enforce</code></li>
+        <li>Push <code>max_budget: cents/100</code> AND <code>soft_budget: 80%</code> both</li>
+        <li>One-shot backfill re-run to apply to existing keys</li>
+        <li>Graceful error translation on remix / chat paths (never raw LiteLLM errors)</li>
+        <li>"Contact owner" UX when limit hit</li>
+      </ul>
+
+      <div class="effect">
+        <div class="effect-label">NET EFFECT</div>
+        <div class="effect-body">Proxy blocks over-budget requests with a clean 4xx. UX shows "you've reached $X, ask team owner". Revert via env var if anything surprises us.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="blast">
+    <div class="blast-title">Blast radius — users potentially affected at each stage</div>
+    <div class="blast-row">
+      <div class="blast-cell s1"><b>0</b>Nobody. Values pushed are null.</div>
+      <div class="blast-cell s2"><b>0</b>Alerts only. Proxy does not block.</div>
+      <div class="blast-cell s3"><b>N</b>Members with caps set. Today: 0 (nobody has caps yet).</div>
+    </div>
+  </div>
+</div>
+</body></html>

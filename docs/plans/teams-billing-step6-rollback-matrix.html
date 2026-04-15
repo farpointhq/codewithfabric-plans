@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 32px; background: #0a0a0a; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+  .page { max-width: 1480px; margin: 0 auto; color: #e5e5e5; }
+  .page-title { font-size: 24px; font-weight: 800; color: #f3f4f6; margin-bottom: 6px; }
+  .page-sub { font-size: 14px; color: #9ca3af; margin-bottom: 24px; }
+
+  .grid { display: grid; grid-template-columns: 220px 1fr 1fr 1fr; gap: 0; background: #111827; border: 1px solid #1f2937; border-radius: 12px; overflow: hidden; }
+
+  .col-header { padding: 16px 18px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; background: #0d1117; border-bottom: 2px solid #374151; color: #9ca3af; }
+  .col-header.s1 { color: #93c5fd; }
+  .col-header.s2 { color: #fcd34d; }
+  .col-header.s3 { color: #86efac; }
+
+  .row-header { padding: 18px; font-size: 12px; font-weight: 700; color: #e5e5e5; background: #0d1117; border-bottom: 1px solid #1f2937; border-right: 2px solid #374151; }
+  .row-header .rh-sub { display: block; font-weight: 400; color: #6b7280; font-size: 11px; margin-top: 3px; font-style: italic; }
+
+  .cell { padding: 18px; border-bottom: 1px solid #1f2937; border-right: 1px solid #1f2937; font-size: 12px; color: #d1d5db; line-height: 1.55; }
+  .cell:last-child { border-right: none; }
+  .cell code { background: rgba(99, 102, 241, 0.12); color: #c4b5fd; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-family: 'JetBrains Mono', monospace; display: inline-block; }
+  .cell .cmd { background: #0d1117; border: 1px solid #1f2937; border-radius: 6px; padding: 8px 10px; margin-top: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #c4b5fd; overflow-x: auto; }
+
+  .time-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .t-sec { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
+  .t-min { background: rgba(251, 191, 36, 0.15); color: #fcd34d; border: 1px solid rgba(251, 191, 36, 0.3); }
+  .t-none { background: rgba(107, 114, 128, 0.15); color: #9ca3af; border: 1px solid rgba(107, 114, 128, 0.3); }
+
+  .impact-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; margin-left: 8px; vertical-align: middle; }
+  .i-zero { background: rgba(16, 185, 129, 0.12); color: #6ee7b7; }
+  .i-low  { background: rgba(251, 191, 36, 0.12); color: #fcd34d; }
+  .i-med  { background: rgba(249, 115, 22, 0.12); color: #fdba74; }
+
+  .footer-note { margin-top: 22px; background: #111827; border: 1px solid #4338ca; border-left: 4px solid #6366f1; border-radius: 10px; padding: 14px 18px; font-size: 13px; color: #d1d5db; line-height: 1.55; }
+  .footer-note b { color: #a5b4fc; }
+</style></head><body>
+<div class="page">
+  <div class="page-title">Rollback Matrix — Every Escape Hatch by Stage</div>
+  <div class="page-sub">What does "undo" look like at each stage, how long does it take, and what's the blast radius of the rollback itself. Reversibility is a precondition for ship approval on every stage.</div>
+
+  <div class="grid">
+    <div class="col-header">&nbsp;</div>
+    <div class="col-header s1">STAGE 1 — WIRING</div>
+    <div class="col-header s2">STAGE 2 — SHADOW</div>
+    <div class="col-header s3">STAGE 3 — ENFORCE</div>
+
+    <div class="row-header">Time to rollback<span class="rh-sub">From decision to safe state</span></div>
+    <div class="cell"><span class="time-badge t-sec">SECONDS</span><br>Revert the PR. That's it.</div>
+    <div class="cell"><span class="time-badge t-min">~2 MINUTES</span><br>Set env var + redeploy. Alerts stop firing, values on keys become inert.</div>
+    <div class="cell"><span class="time-badge t-min">~2 MINUTES</span><br>Env var flip + redeploy. Proxy stops blocking. Existing caps stay on keys as soft_budget.</div>
+
+    <div class="row-header">Rollback command<span class="rh-sub">Concrete, runnable</span></div>
+    <div class="cell">
+      Revert commit, redeploy:
+      <div class="cmd">git revert &lt;sha&gt;<br>vercel --prod</div>
+    </div>
+    <div class="cell">
+      Flip mode:
+      <div class="cmd">LITELLM_BUDGET_MODE=off<br>vercel --prod</div>
+      Optional soft_budget sweep:
+      <div class="cmd">npx tsx scripts/litellm-clear-soft-budgets.ts</div>
+    </div>
+    <div class="cell">
+      Flip mode, keep observability:
+      <div class="cmd">LITELLM_BUDGET_MODE=shadow<br>vercel --prod</div>
+      Full unwind:
+      <div class="cmd">npx tsx scripts/litellm-clear-max-budgets.ts</div>
+    </div>
+
+    <div class="row-header">User impact of rollback<span class="rh-sub">Not the original change — the undo</span></div>
+    <div class="cell">None.<span class="impact-badge i-zero">ZERO</span><br>Stage 1 pushed null values; undoing has no effect on behavior.</div>
+    <div class="cell">None.<span class="impact-badge i-zero">ZERO</span><br>Stage 2 never blocked anyone. Reverting stops alert telemetry; no user sees a change.</div>
+    <div class="cell">Users previously blocked regain access.<span class="impact-badge i-low">LOW</span><br>This is good — reverting only <i>unblocks</i>, never creates new restrictions.</div>
+
+    <div class="row-header">What we lose on rollback<span class="rh-sub">The downside, if any</span></div>
+    <div class="cell">The call-site plumbing itself. All non-destructive; can be re-shipped any time.</div>
+    <div class="cell">The alert history in <code>BudgetAlert</code> table is preserved. Webhook stops firing until re-enabled.</div>
+    <div class="cell">Enforcement semantics. Back to shadow mode; DB fields still persist caps, dashboard still shows them, but proxy stops blocking until re-enabled.</div>
+
+    <div class="row-header">Detection signal<span class="rh-sub">What would make us pull the trigger?</span></div>
+    <div class="cell">Stage 1 cannot mis-behave in a user-facing way. Detection is pre-merge (type checks, tests, preview smoke).</div>
+    <div class="cell">Webhook fires on a member who <b>had headroom at the time of the request</b> per reconciliation check. Aka a false-positive candidate.</div>
+    <div class="cell"><b>Any paying user</b> reports being blocked. Any support ticket mentioning "quota" or "limit" when the user's cap is null. Any alert from the reconciliation cron showing LiteLLM spend ≠ DB spend.</div>
+
+    <div class="row-header">Who decides<span class="rh-sub">Authority to roll back</span></div>
+    <div class="cell">Any engineer. No coordination needed.</div>
+    <div class="cell">Any engineer. Shadow rollback is safe.</div>
+    <div class="cell">Ryan — or any engineer acting in a user-reported-outage scenario. Never delay a rollback to wait for approval.</div>
+  </div>
+
+  <div class="footer-note">
+    <b>Rollback-first design philosophy.</b> Every stage ships with its rollback command tested on a preview before the forward deploy. We do not ship a stage whose rollback we haven't rehearsed. "Can we undo this in two minutes?" is the ship gate for stages 2 and 3 — if the answer is no, the plan is wrong and the stage must be re-scoped.
+  </div>
+</div>
+</body></html>

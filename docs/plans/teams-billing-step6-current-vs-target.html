@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 32px; background: #0a0a0a; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+  .page { max-width: 1480px; margin: 0 auto; color: #e5e5e5; }
+  .page-title { font-size: 24px; font-weight: 800; color: #f3f4f6; margin-bottom: 6px; }
+  .page-sub { font-size: 14px; color: #9ca3af; margin-bottom: 28px; }
+
+  .row { display: flex; gap: 20px; align-items: stretch; }
+  .panel { flex: 1; background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 24px; }
+  .panel.current { border-color: rgba(239, 68, 68, 0.3); }
+  .panel.target  { border-color: rgba(34, 197, 94, 0.3); }
+
+  .panel-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #1f2937; }
+  .panel.current .panel-title { color: #f87171; }
+  .panel.target  .panel-title { color: #34d399; }
+  .panel-title { font-size: 16px; font-weight: 700; letter-spacing: 0.3px; }
+  .panel-badge { font-size: 10px; padding: 3px 8px; border-radius: 999px; font-weight: 700; letter-spacing: 0.5px; }
+  .panel.current .panel-badge { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+  .panel.target  .panel-badge { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+
+  .node { background: #0d1117; border: 1px solid #21262d; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; position: relative; }
+  .node-name { font-size: 12px; font-weight: 700; color: #a5b4fc; font-family: 'JetBrains Mono', monospace; margin-bottom: 6px; }
+  .node-body { font-size: 12px; color: #9ca3af; line-height: 1.6; }
+  .node-body code { background: rgba(99, 102, 241, 0.12); color: #c4b5fd; padding: 1px 6px; border-radius: 4px; font-size: 11px; }
+
+  .node.db { border-left: 3px solid #60a5fa; }
+  .node.app { border-left: 3px solid #a78bfa; }
+  .node.proxy { border-left: 3px solid #fbbf24; }
+  .node.dead { opacity: 0.55; border-left-color: #6b7280; }
+
+  .arrow { text-align: center; font-size: 18px; color: #4338ca; margin: -4px 0 10px; font-weight: 700; }
+  .arrow.broken { color: #6b7280; }
+  .arrow.broken::after { content: ' ✗'; color: #f87171; }
+
+  .callout { margin-top: 10px; padding: 10px 12px; border-radius: 8px; font-size: 12px; line-height: 1.5; }
+  .callout.bad { background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; }
+  .callout.good { background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.3); color: #86efac; }
+  .callout-title { font-weight: 700; margin-bottom: 4px; }
+
+  .legend { display: flex; gap: 16px; font-size: 11px; color: #9ca3af; margin-bottom: 18px; }
+  .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+</style></head><body>
+<div class="page">
+  <div class="page-title">Per-Member Cap Enforcement — Current vs Target Data Flow</div>
+  <div class="page-sub">Why <code style="background:rgba(99,102,241,.12);color:#c4b5fd;padding:1px 6px;border-radius:4px">TeamMember.monthlyLimitCents</code> is theater today and what wiring it looks like after step 6</div>
+
+  <div class="legend">
+    <span><span class="legend-dot" style="background:#60a5fa"></span>Database (Prisma)</span>
+    <span><span class="legend-dot" style="background:#a78bfa"></span>Next.js application</span>
+    <span><span class="legend-dot" style="background:#fbbf24"></span>LiteLLM proxy (enforcement layer)</span>
+  </div>
+
+  <div class="row">
+    <div class="panel current">
+      <div class="panel-head">
+        <div class="panel-title">CURRENT — broken</div>
+        <div class="panel-badge">Pre-step-6</div>
+      </div>
+
+      <div class="node db">
+        <div class="node-name">TeamMember.monthlyLimitCents</div>
+        <div class="node-body">Saved by <code>PATCH /api/team/members/[id]</code>. Read in dashboard UI. Value: <code>5000</code> (=$50).</div>
+      </div>
+      <div class="arrow broken">↓ not synced</div>
+
+      <div class="node app">
+        <div class="node-name">litellm.generateKey / updateKey</div>
+        <div class="node-body">Call sites never pass <code>maxBudget</code>. Keys are born with <code>max_budget: null</code>.</div>
+      </div>
+      <div class="arrow broken">↓ not pushed</div>
+
+      <div class="node proxy dead">
+        <div class="node-name">LiteLLM proxy — key record</div>
+        <div class="node-body"><code>max_budget: null</code><br><code>soft_budget: null</code><br><code>budget_duration: null</code></div>
+      </div>
+      <div class="arrow broken">↓ never enforced</div>
+
+      <div class="node app">
+        <div class="node-name">POST /api/litellm/callback (post-hoc)</div>
+        <div class="node-body">Increments <code>currentMonthSpendCents</code>. Emits <code>console.warn("Member X exceeded monthly limit")</code>. Request is <b>already served</b>.</div>
+      </div>
+
+      <div class="callout bad">
+        <div class="callout-title">Failure mode</div>
+        A member with a $50/mo cap can burn $5,000. Cap is a UI label, not a gate. The proxy has no idea the cap exists.
+      </div>
+    </div>
+
+    <div class="panel target">
+      <div class="panel-head">
+        <div class="panel-title">TARGET — wired</div>
+        <div class="panel-badge">After step 6</div>
+      </div>
+
+      <div class="node db">
+        <div class="node-name">TeamMember.monthlyLimitCents</div>
+        <div class="node-body">Same Prisma write. Still the source of truth team owners edit through the dashboard.</div>
+      </div>
+      <div class="arrow">↓ sync block on write</div>
+
+      <div class="node app">
+        <div class="node-name">litellm.generateKey / updateKey</div>
+        <div class="node-body">Pass <code>maxBudget: cents / 100</code>. New sync block in <code>PATCH members/[id]</code> mirrors the existing <code>rateLimitRpm</code> block. Fail-open on LiteLLM errors.</div>
+      </div>
+      <div class="arrow">↓ stored on key</div>
+
+      <div class="node proxy">
+        <div class="node-name">LiteLLM proxy — key record</div>
+        <div class="node-body"><code>max_budget: 50.00</code><br><code>soft_budget: 40.00</code> (80% warn)<br><code>budget_duration: "30d"</code></div>
+      </div>
+      <div class="arrow">↓ enforced at request time</div>
+
+      <div class="node proxy">
+        <div class="node-name">_PROXY_MaxBudgetLimiter (already loaded)</div>
+        <div class="node-body">Existing LiteLLM v1.82.2 success callback. Blocks over-budget requests at the proxy, before vLLM is touched.</div>
+      </div>
+
+      <div class="callout good">
+        <div class="callout-title">Enforcement path</div>
+        When a member's spend ≥ <code>max_budget</code>, the proxy returns a 4xx. Next.js catches it, translates to a graceful "quota reached" UX. Caps become real.
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

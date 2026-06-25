@@ -1,0 +1,58 @@
+flowchart TB
+    subgraph clients["Clients"]
+        DESKTOP["Fabric Desktop App"]
+        WEB["Dashboard / Web"]
+        STRIPE_EXT["Stripe (external)"]
+    end
+
+    subgraph portal["Portal (Next.js on Vercel)"]
+        STATUS["/api/user/status<br/>auto-create + self-heal + mint key"]
+        KEYS["/api/keys/{generate,reveal}"]
+        STRIPEWH["/api/stripe/webhooks"]
+        CB["/api/litellm/callback<br/>(usage ingest)"]
+        SUBSTAT["/api/subscription/status"]
+
+        subgraph reconcilers["Scattered reconcilers / self-heal"]
+            ENT["ensureEnterpriseAccess()"]
+            MEM["ensureUnlimitedTeamMemberAccess()"]
+            SYNC["syncLiteLLMForUser()<br/>(litellm-sync)"]
+            PROV["provisionUnlimitedAccess()"]
+        end
+    end
+
+    subgraph data["State stores"]
+        NEON[("Neon / Prisma<br/>SOURCE OF TRUTH<br/>User, Team, TeamMember,<br/>ApiKey, Usage")]
+        LLM[("LiteLLM proxy<br/>user row: models / max_budget<br/>key: models / max_budget / expiry")]
+    end
+
+    BUZZ["Buzz cron 03:17<br/>analytics sync<br/>(bridges broken callback)"]
+
+    DESKTOP -->|"Google OAuth token"| STATUS
+    WEB -->|session| KEYS
+    WEB -->|session| SUBSTAT
+    STRIPE_EXT --> STRIPEWH
+    LLM -.->|"usage logs (callback gap)"| CB
+
+    STATUS --> ENT
+    STATUS --> MEM
+    STRIPEWH --> PROV
+    STRIPEWH --> SYNC
+    ENT --> SYNC
+    MEM --> SYNC
+
+    STATUS --> NEON
+    KEYS --> NEON
+    SUBSTAT --> NEON
+    CB --> NEON
+    PROV --> NEON
+    SYNC -->|"updateKey / updateUser"| LLM
+    ENT -->|"liftLiteLLMUserRow"| LLM
+    LLM -->|"usage logs"| BUZZ
+    BUZZ -->|"DailyUsageSummary"| NEON
+
+    classDef truth fill:#1b4332,stroke:#52b788,color:#fff
+    classDef synced fill:#3a0ca3,stroke:#b5179e,color:#fff
+    classDef drift fill:#6a040f,stroke:#e85d04,color:#fff
+    class NEON truth
+    class LLM synced
+    class reconcilers drift

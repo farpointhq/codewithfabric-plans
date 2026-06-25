@@ -1,0 +1,1210 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Work-in-progress implementation plans for CodeWithFabric">
+      
+      
+      
+        <link rel="canonical" href="https://farpointhq.github.io/codewithfabric-plans/plans/issue-278-plan/">
+      
+      
+        <link rel="prev" href="../teams-billing-litellm-enforcement-plan/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Issue #278 – Auth/Billing Architecture Review - CodeWithFabric Plans</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <link href="../../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: #1a1a1aee; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#issue-278-architecture-review-refactor-auth-sign-up-api-key-billing-lifecycle" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="CodeWithFabric Plans" class="md-header__button md-logo" aria-label="CodeWithFabric Plans" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            CodeWithFabric Plans
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Issue #278 – Auth/Billing Architecture Review
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="purple" aria-label="Switch to light mode" type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="purple" aria-label="Switch to dark mode" type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="CodeWithFabric Plans" class="md-nav__button md-logo" aria-label="CodeWithFabric Plans" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    CodeWithFabric Plans
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plans
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Plans
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../issue-64-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Issue #64 – Team Management Schema &amp; Auth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../issue-65-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Issue #65 – Team Invite Flow &amp; Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../issue-66-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Issue #66 – Member CRUD &amp; Per-Seat Purchasing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../issue-67-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Issue #67 – Hierarchical Teams &amp; Property Inheritance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../issue-1810-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Issue #1810 – Block-Level Eager Summarization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../teams-billing-architecture-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Teams &amp; Billing Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../teams-billing-litellm-enforcement-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Teams &amp; Billing — LiteLLM Cap Enforcement (Step 6)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Issue #278 – Auth/Billing Architecture Review
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Issue #278 – Auth/Billing Architecture Review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#root-cause-analysis-why-this-issue-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause Analysis (why this issue exists)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#proposed-solution-approach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposed Solution (approach)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#files-to-review-no-code-changes-in-this-issue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files to Review (no code changes in this issue)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#new-files-the-deliverables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New Files (the deliverables)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deliverable-diagrams-7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deliverable Diagrams (7)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#seed-refactor-backlog-expand-during-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Seed Refactor Backlog (expand during review)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Strategy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#risks-mitigations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Risks &amp; Mitigations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#constraints-from-the-issue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constraints (from the issue)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#root-cause-analysis-why-this-issue-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause Analysis (why this issue exists)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#proposed-solution-approach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposed Solution (approach)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#files-to-review-no-code-changes-in-this-issue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files to Review (no code changes in this issue)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#new-files-the-deliverables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New Files (the deliverables)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deliverable-diagrams-7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deliverable Diagrams (7)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#seed-refactor-backlog-expand-during-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Seed Refactor Backlog (expand during review)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Strategy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#risks-mitigations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Risks &amp; Mitigations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#constraints-from-the-issue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constraints (from the issue)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="issue-278-architecture-review-refactor-auth-sign-up-api-key-billing-lifecycle">Issue #278: Architecture review + refactor — auth / sign-up / API key / billing lifecycle<a class="headerlink" href="#issue-278-architecture-review-refactor-auth-sign-up-api-key-billing-lifecycle" title="Permanent link">¶</a></h1>
+<h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">¶</a></h2>
+<p>Conduct a top-to-bottom architectural review of the account lifecycle — <strong>authentication &amp; sign-up → API key creation/verification → billing/entitlement</strong> — produce diagrams of the <em>real</em> flows, write down the invariants and sources-of-truth, and ship a prioritized refactor backlog. <strong>No behavior changes land in this issue.</strong> Output is documentation, diagrams, and scoped follow-up PRs. Catalyst: PR #277 (shadow-team entitlement bug).</p>
+<p>This is a <strong>review + design</strong> deliverable. The implementation work is <em>producing the artifacts below</em>, not changing application code.</p>
+<h2 id="root-cause-analysis-why-this-issue-exists">Root Cause Analysis (why this issue exists)<a class="headerlink" href="#root-cause-analysis-why-this-issue-exists" title="Permanent link">¶</a></h2>
+<p>PR #277 fixed a symptom: a proactively-provisioned Enterprise user got a <strong>shadow team</strong> on first OAuth sign-in, and entitlement resolved via an unordered <code>ownedTeams[0]</code>, silently stripping their plan. The codebase exploration for this plan confirms the <em>disease</em> is <strong>accidental complexity accreted across incidents</strong>:</p>
+<ol>
+<li><strong>The <code>ownedTeams[0]</code> / <code>teamMembers[0]</code> "primary team" assumption is duplicated in 5+ readers</strong> — <code>dashboard/page.tsx</code>, <code>api/user/status</code>, <code>team-helpers.findUserTeamId</code>, <code>litellm-sync</code>, <code>api/keys/generate</code> — each defending against multi-team independently. PR #277 added <code>selectPrimaryTeam</code> but did not retrofit every reader. The schema does not prevent a user owning &gt;1 team.</li>
+<li><strong>Dual sources of truth with manual reconciliation.</strong> Access lives in BOTH the LiteLLM user row (<code>all-proxy-models</code> vs <code>__no_models__</code>) and the per-key tier allowlist (<code>min(user,key)</code>). Expiry lives in BOTH Neon (<code>team.unlimitedCurrentPeriodEnd</code>) and the LiteLLM key <code>expiresAt</code>. "Is this enterprise" is answered by BOTH a compile-time <code>ENTERPRISE_AUTO_DOMAINS</code> set and data-driven provisioning scripts.</li>
+<li><strong>Self-heal logic scattered across hot paths.</strong> <code>ensureEnterpriseAccess</code>, <code>ensureUnlimitedTeamMemberAccess</code>, and the inline key-mint in <code>/api/user/status</code> all reconcile entitlement on the request path, with overlapping responsibilities.</li>
+<li><strong>A known callback gap</strong> (LiteLLM → Neon usage) is bridged by an out-of-band Buzz cron at 03:17, not by code in this repo.</li>
+</ol>
+<p></p><div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Current architecture — portal ↔ Neon ↔ LiteLLM ↔ Buzz cron, with the scattered reconcilers highlighted:
+</code></pre></div>
+<a class="glightbox" data-type="image" data-width="100%" data-height="auto" href="../issue-278-current-architecture.png" data-desc-position="bottom"><img alt="Current architecture" src="../issue-278-current-architecture.png"></a><p></p>
+<p></p><div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>The "two sources of truth" map — every place state is duplicated and where drift can occur:
+</code></pre></div>
+<a class="glightbox" data-type="image" data-width="100%" data-height="auto" href="../issue-278-sources-of-truth.png" data-desc-position="bottom"><img alt="Sources of truth" src="../issue-278-sources-of-truth.png"></a><p></p>
+<h2 id="proposed-solution-approach">Proposed Solution (approach)<a class="headerlink" href="#proposed-solution-approach" title="Permanent link">¶</a></h2>
+<p>Work in four review tracks, producing one set of artifacts. Each track maps to a subsystem already scoped in the issue. Reviewers should <strong>read the code, not the comments</strong> — confirm each invariant against the actual implementation before writing it down.</p>
+<ol>
+<li><strong>Auth &amp; sign-up track</strong> — NextAuth v5 (<code>src/lib/auth.ts</code>), the custom adapter + <code>getUserByEmail</code>/<code>findUserByNormalizedEmail</code> override, <code>allowDangerousEmailAccountLinking</code>, <code>events.createUser</code> team bootstrap, credentials/email-password flow, beta gate, staff/team auth, and the <code>User/Account/Session/VerificationToken/PasswordResetToken/BetaInvite</code> models.</li>
+<li><strong>API key track</strong> — <code>/api/user/status</code> (token verify → auto-create → ensure access → mint/return), <code>/api/keys/{generate,reveal}</code>, <code>provision-enterprise.ts</code>, <code>provision-unlimited.ts</code>, <code>litellm.ts</code>, <code>litellm-sync.ts</code>, the <code>__no_models__</code> / <code>all-proxy-models</code> sentinels, <code>min(user,key)</code> enforcement, and <code>crypto.ts</code> (AES-256-GCM).</li>
+<li><strong>Billing &amp; entitlement track</strong> — Stripe <code>checkout</code>/<code>checkout-onetime</code>/<code>portal</code>/<code>webhooks</code>, <code>billing.ts</code> (<code>getAllowedModelsForContext</code> as the single access predicate), <code>enterprise.ts</code> (<code>shapeSubscriptionStatus</code>), <code>balance.ts</code>, team helpers/hierarchy/auth, usage/<code>DailyUsageSummary</code>, and the dual-expiry model.</li>
+<li><strong>Cross-cutting synthesis</strong> — produce the diagrams, the architecture doc, the prioritized refactor backlog, and the security/entitlement checklist; assert no regressions for each proposed change.</li>
+</ol>
+<p>For each track: produce the relevant diagram source (<code>.mmd</code>), render to PNG, document the flow + invariants + source-of-truth, and append findings to the backlog.</p>
+<h2 id="files-to-review-no-code-changes-in-this-issue">Files to Review (no code changes in this issue)<a class="headerlink" href="#files-to-review-no-code-changes-in-this-issue" title="Permanent link">¶</a></h2>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Files</th>
+<th>What to capture</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Auth core</td>
+<td><code>src/lib/auth.ts</code>, <code>src/lib/userLookup.ts</code>, <code>src/lib/emailUtils.ts</code></td>
+<td>JWT session, adapter override, account-linking safety, normalization</td>
+</tr>
+<tr>
+<td>Email/password</td>
+<td><code>src/app/api/auth/{signup,verify-email,forgot-password,reset-password,resend-verification,clear-stale}</code>, <code>src/lib/{password,email,tokens}.ts</code></td>
+<td>Token lifetimes, single-use, session invalidation, signup team-bootstrap duplication</td>
+</tr>
+<tr>
+<td>Beta / staff</td>
+<td><code>src/lib/beta-config.ts</code>, <code>src/lib/beta-gate.ts</code>, <code>src/app/api/beta/*</code>, <code>src/lib/{staff-auth,team-auth}.ts</code></td>
+<td>4-point beta gate, RBAC matrix</td>
+</tr>
+<tr>
+<td>API key</td>
+<td><code>src/app/api/user/status/route.ts</code>, <code>src/app/api/keys/{generate,reveal}/route.ts</code></td>
+<td>Auth modes, self-heal branches, P2002 race handling</td>
+</tr>
+<tr>
+<td>Provisioning</td>
+<td><code>src/lib/provision-enterprise.ts</code>, <code>src/lib/provision-unlimited.ts</code></td>
+<td><code>ensureEnterpriseAccess</code>, <code>ensureUnlimitedTeamMemberAccess</code>, <code>ensureFabricApiKey</code>, <code>liftLiteLLMUserRow</code> idempotency</td>
+</tr>
+<tr>
+<td>LiteLLM</td>
+<td><code>src/lib/litellm.ts</code>, <code>src/lib/litellm-sync.ts</code>, <code>src/app/api/litellm/callback/route.ts</code></td>
+<td><code>min(user,key)</code>, sentinels, spend-reset reasons, cost fallback</td>
+</tr>
+<tr>
+<td>Crypto</td>
+<td><code>src/lib/crypto.ts</code></td>
+<td>AES-256-GCM, per-key IV, reveal authz, <code>API_KEY_ENCRYPTION_SECRET</code></td>
+</tr>
+<tr>
+<td>Stripe/billing</td>
+<td><code>src/app/api/stripe/**</code>, <code>src/lib/{stripe,billing,balance,enterprise}.ts</code>, <code>src/content/pricing-plans.ts</code></td>
+<td>Webhook events, enterprise guards, tier/model allowlists, dual expiry</td>
+</tr>
+<tr>
+<td>Teams</td>
+<td><code>src/lib/{team-helpers,team-hierarchy,team-invite,team-emails}.ts</code>, <code>src/app/api/team/**</code></td>
+<td><code>selectPrimaryTeam</code>, owner-vs-member, <code>[0]</code> readers</td>
+</tr>
+<tr>
+<td>Enterprise</td>
+<td><code>src/lib/enterprise-domains.ts</code>, proactive provisioning scripts</td>
+<td>Compile-time domains vs data-driven scripts</td>
+</tr>
+<tr>
+<td>Schema</td>
+<td><code>prisma/schema.prisma</code></td>
+<td>All 14 models + relations (User↔Team ownership vs membership)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="new-files-the-deliverables">New Files (the deliverables)<a class="headerlink" href="#new-files-the-deliverables" title="Permanent link">¶</a></h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>docs/plans/issue-278-architecture.md</code> (in main repo)</td>
+<td>Written architecture doc: each flow, invariants, source-of-truth per state</td>
+</tr>
+<tr>
+<td><code>docs/plans/issue-278-*.mmd</code> + <code>.png</code></td>
+<td>The 7 diagrams below (<code>.mmd</code> source → PNG, images only in markdown)</td>
+</tr>
+<tr>
+<td><code>docs/plans/issue-278-refactor-backlog.md</code></td>
+<td>Prioritized (impact × risk) refactor items, each scoped to its own PR</td>
+</tr>
+<tr>
+<td><code>docs/plans/issue-278-security-checklist.md</code></td>
+<td>Entitlement/security guarantees asserted preserved by each proposed change</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Note: the issue's deliverables live in the <strong>main <code>codewithfabric</code> repo</strong> under <code>docs/plans/</code>, per repo convention — distinct from this planning artifact in the <code>-plans</code> repo.</p>
+</blockquote>
+<h2 id="deliverable-diagrams-7">Deliverable Diagrams (7)<a class="headerlink" href="#deliverable-diagrams-7" title="Permanent link">¶</a></h2>
+<ol>
+<li><strong>Sequence</strong> — desktop sign-in → <code>/api/user/status</code> → key mint/return, incl. self-heal branches</li>
+<li><strong>Sequence</strong> — web sign-up (OAuth + credentials) → email verify → team bootstrap → key generate</li>
+<li><strong>Sequence</strong> — Stripe checkout → webhook → entitlement / LiteLLM sync</li>
+<li><strong>State machine</strong> — a Team's billing/entitlement states (INACTIVE / ACTIVE / Unlimited / Enterprise / expired) + transitions</li>
+<li><strong>State machine</strong> — an ApiKey + its LiteLLM user-row state (deny-all <code>__no_models__</code> → lifted; key tier allowlist)</li>
+<li><strong>ERD</strong> — account/billing models and relations (esp. User↔Team ownership vs membership)</li>
+<li><strong>Component/data-flow</strong> — portal ↔ Neon ↔ LiteLLM proxy ↔ Buzz analytics cron (the "two sources of truth" map)</li>
+</ol>
+<h2 id="implementation-steps">Implementation Steps<a class="headerlink" href="#implementation-steps" title="Permanent link">¶</a></h2>
+<ol>
+<li>Land the architecture doc skeleton in <code>docs/plans/issue-278-architecture.md</code> with one section per flow.</li>
+<li>Author the 7 <code>.mmd</code> diagrams, render to PNG, embed images only.</li>
+<li>Per track, verify each invariant against the code and fill the source-of-truth table.</li>
+<li>Compile findings into the prioritized refactor backlog (seeded below), each item scoped to a standalone PR.</li>
+<li>Write the security/entitlement checklist asserting no regression for each proposed refactor.</li>
+<li>Open the doc PR; each refactor item becomes its own scoped, individually-reviewed PR afterward.</li>
+</ol>
+<h2 id="seed-refactor-backlog-expand-during-review">Seed Refactor Backlog (expand during review)<a class="headerlink" href="#seed-refactor-backlog-expand-during-review" title="Permanent link">¶</a></h2>
+<p>Prioritized by impact × risk. Each item is scoped to become its own PR.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Impact</th>
+<th>Risk</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Single primary-team predicate.</strong> Retrofit all <code>ownedTeams[0]</code>/<code>teamMembers[0]</code> readers (dashboard, <code>/api/user/status</code>, <code>findUserTeamId</code>, <code>litellm-sync</code>, <code>keys/generate</code>) to <code>selectPrimaryTeam</code>. Then decide: enforce ≤1 owned team in the data model, or make multi-team first-class.</td>
+<td>High</td>
+<td>Med</td>
+<td>Direct continuation of #277; eliminates the bug class entirely.</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>One idempotent <code>reconcileEntitlement(userId)</code>.</strong> Collapse <code>ensureEnterpriseAccess</code> + <code>ensureUnlimitedTeamMemberAccess</code> + the inline key-mint into a single idempotent function; make it the only entitlement self-heal entry point.</td>
+<td>High</td>
+<td>Med</td>
+<td>Removes overlapping hot-path logic; easier to test once.</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Single LiteLLM writer.</strong> Make <code>litellm-sync</code> the <em>only</em> code that writes to LiteLLM (key + user row); have provisioning call it rather than calling <code>litellm.updateKey/updateUser</code> directly.</td>
+<td>High</td>
+<td>Med</td>
+<td>Closes drift between Neon and LiteLLM; one place to reason about <code>min(user,key)</code>.</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Enterprise identity as one data-sourced predicate.</strong> Replace the compile-time <code>ENTERPRISE_AUTO_DOMAINS</code> set + script-provisioned personal emails with a single "is this account enterprise" predicate sourced from data.</td>
+<td>Med</td>
+<td>Med</td>
+<td>Removes two code paths that can disagree.</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Close the LiteLLM callback gap in code.</strong> Document and, separately, replace/standardize the Buzz cron bridge with an in-repo reconciler or a hardened callback.</td>
+<td>Med</td>
+<td>Med</td>
+<td>Currently out-of-band; a TOCTOU/observability gap.</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>De-duplicate signup team bootstrap.</strong> <code>events.createUser</code> and the signup route both bootstrap a team (signup bypasses the adapter). Extract one shared bootstrap helper.</td>
+<td>Med</td>
+<td>Low</td>
+<td>Two divergent copies of the same logic.</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Confirm + lint the access gate.</strong> Assert the access gate is the models allowlist (never <code>max_budget</code>) everywhere; flag any code treating budget as an access gate.</td>
+<td>Med</td>
+<td>Low</td>
+<td>Per prior corrections (Ryan, twice).</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Test coverage for cross-system reconcile + webhooks.</strong> Add tests for invariants surfaced by the diagrams (reconcile paths, webhook replay/ordering).</td>
+<td>Med</td>
+<td>Low</td>
+<td>Fills the gaps the review exposes.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="test-strategy">Test Strategy<a class="headerlink" href="#test-strategy" title="Permanent link">¶</a></h2>
+<p>This issue produces <strong>no behavior changes</strong>, so there is no application code to unit-test here. Verification of the <em>deliverable</em>:</p>
+<ul>
+<li><strong>Diagram fidelity:</strong> each diagram cross-checked against the actual code paths it depicts (the exploration in this plan is the baseline).</li>
+<li><strong>Invariant assertions:</strong> every "source of truth" claim in the architecture doc is backed by a file:line reference.</li>
+<li><strong>Backlog scoping check:</strong> each backlog item is independently shippable (no item requires another to land first, or the dependency is stated).</li>
+<li><strong>Security checklist:</strong> each proposed refactor is paired with the guarantee(s) it must preserve and how to verify them.</li>
+<li>For the <em>follow-up</em> refactor PRs (out of scope here): TDD per the repo workflow, with tests written before the refactor, plus <code>npm run typecheck</code> and <code>npm run build</code>.</li>
+</ul>
+<h2 id="risks-mitigations">Risks &amp; Mitigations<a class="headerlink" href="#risks-mitigations" title="Permanent link">¶</a></h2>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Review documents the <em>intended</em> design, not the <em>actual</em> one (comment drift)</td>
+<td>Read code, not comments; back every invariant with a file:line citation.</td>
+</tr>
+<tr>
+<td>A refactor silently weakens an entitlement guarantee</td>
+<td>Security/entitlement checklist gates every backlog item; "err on the side of access" for enterprise (Go.team etc.) is a hard rule — see <code>provision-enterprise.ts</code>.</td>
+</tr>
+<tr>
+<td>Diagrams go stale immediately after merge</td>
+<td>Keep <code>.mmd</code> sources in-repo so they regenerate; reference them from the doc, not inline.</td>
+</tr>
+<tr>
+<td>Scope creep — refactors sneak into the review PR</td>
+<td>Hard constraint: this issue ships docs/diagrams/backlog only. Refactors are separate, individually-reviewed PRs.</td>
+</tr>
+<tr>
+<td>"Single owned team" enforcement breaks an existing multi-team user</td>
+<td>Audit production data for any user with &gt;1 owned team before enforcing; prefer making multi-team first-class if any exist.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="constraints-from-the-issue">Constraints (from the issue)<a class="headerlink" href="#constraints-from-the-issue" title="Permanent link">¶</a></h2>
+<ul>
+<li><strong>Preserve all functionality and every security/entitlement guarantee.</strong> "Err on the side of access" for enterprise accounts is a hard business rule.</li>
+<li>Refactor for elegance/clarity, not novelty — prefer collapsing scattered/duplicated logic and making invariants explicit over rewrites.</li>
+<li>Diagrams follow the repo convention: separate <code>.mmd</code> → PNG, images only in markdown.</li>
+<li>No behavior changes in this issue; refactors land as separate PRs.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>

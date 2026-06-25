@@ -68,4 +68,5 @@ nav:
   - "Issue #67 \u2013 Hierarchical Teams & Property Inheritance": plans/issue-67-plan.md
   - "Issue #1810 \u2013 Block-Level Eager Summarization": plans/issue-1810-plan.md
   - Teams & Billing Architecture: plans/teams-billing-architecture-plan.md
-  - Teams & Billing — LiteLLM Cap Enforcement (Step 6): plans/teams-billing-litellm-enforcement-plan.md
+  - "Teams & Billing \u2014 LiteLLM Cap Enforcement (Step 6)": plans/teams-billing-litellm-enforcement-plan.md
+  - "Issue #278 \u2013 Auth/Billing Architecture Review": plans/issue-278-plan.md

@@ -1,0 +1,28 @@
+flowchart LR
+    subgraph access["ACCESS (which models)"]
+        A1["LiteLLM user row<br/>all-proxy vs __no_models__"]
+        A2["LiteLLM key<br/>tier allowlist"]
+        A1 -->|"min(user, key)"| AEFF["effective access"]
+        A2 -->|"min(user, key)"| AEFF
+    end
+
+    subgraph expiry["EXPIRY (when access ends)"]
+        E1["Neon<br/>team.unlimitedCurrentPeriodEnd"]
+        E2["LiteLLM key<br/>expiresAt"]
+        E1 -.->|"synced on invoice.paid"| E2
+    end
+
+    subgraph entid["ENTERPRISE identity"]
+        N1["enterprise-domains.ts<br/>ENTERPRISE_AUTO_DOMAINS<br/>(compile-time set)"]
+        N2["provisioning scripts<br/>(personal emails, data)"]
+    end
+
+    subgraph primary["PRIMARY TEAM selection"]
+        T1["ownedTeams[0] / teamMembers[0]<br/>(read in 5+ call sites)"]
+        T2["selectPrimaryTeam()<br/>(PR #277, centralized)"]
+    end
+
+    classDef drift fill:#6a040f,stroke:#e85d04,color:#fff
+    classDef ok fill:#1b4332,stroke:#52b788,color:#fff
+    class A1,A2,E1,E2,N1,N2,T1 drift
+    class T2 ok

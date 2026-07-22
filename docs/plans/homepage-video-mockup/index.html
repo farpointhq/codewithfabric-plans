@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Homepage after — product video mockup</title>
+<style>
+  :root{
+    --page-bg:#000;
+    --heading-color:#fff;
+    --paragraph-color:#fafafab3;
+    --stroke-color:#373737;
+  }
+  *{box-sizing:border-box;border-color:var(--stroke-color);}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--page-bg);
+    color:var(--heading-color);
+    font-family:"Geist Sans",Inter,system-ui,-apple-system,sans-serif;
+    font-size:14px;line-height:1.2;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  h1,h2,h3{margin:0;font-weight:400;color:var(--heading-color);}
+  h2{font-size:48px;letter-spacing:-.68px;line-height:1.2;}
+  h3{font-size:38px;line-height:1.2;}
+  p{
+    font-family:Inter,system-ui,sans-serif;
+    color:var(--paragraph-color);
+    letter-spacing:.2px;font-size:15px;font-weight:400;line-height:1.6;
+    margin-block:0;
+  }
+  .marketing-container{max-width:1160px;margin:0 auto;padding:0 1em;position:relative;}
+  section{margin-top:30px;}
+  .box{border:1px solid var(--stroke-color);}
+  .horizontal-border{
+    border:1px solid var(--stroke-color);
+    background-color:var(--page-bg);
+    background-image:url('line.svg');
+    background-position:0 0;background-size:63px;
+    height:80px;margin-top:-1px;
+  }
+  .btn-primary{
+    display:inline-block;font-family:Inter,sans-serif;font-size:16px;
+    background:#fff;color:#000;border-radius:999px;padding:10px 22px;text-decoration:none;
+  }
+
+  /* ── the InlineVideo primitive being proposed ── */
+  .inline-video{
+    display:block;width:100%;height:auto;
+    border:1px solid var(--stroke-color);border-radius:10px;
+    background:#0a0a0a;object-fit:cover;
+  }
+
+  /* ── change annotations ── */
+  .ann{position:relative;}
+  .ann::after{
+    content:attr(data-ann);
+    position:absolute;top:8px;left:8px;z-index:20;
+    font-family:Inter,sans-serif;font-size:11px;letter-spacing:.3px;
+    background:#0f3d2e;color:#7fe9c3;border:1px solid #3c9;
+    padding:3px 9px;border-radius:999px;white-space:nowrap;
+    pointer-events:none;
+  }
+  .ann.removed::after{background:#4a1010;color:#ffb3b3;border-color:#c55;}
+  body.no-ann .ann::after{display:none;}
+  body.no-ann .ghost{display:none;}
+
+  .ghost{
+    border:1px dashed #c55;background:repeating-linear-gradient(45deg,#140606,#140606 10px,#0d0505 10px,#0d0505 20px);
+    padding:26px 30px;text-align:center;
+  }
+  .ghost p{color:#ffb3b3;}
+
+  /* ── toolbar ── */
+  .toolbar{
+    position:fixed;top:14px;right:14px;z-index:100;
+    display:flex;gap:8px;align-items:center;
+    background:#0d0d0dee;border:1px solid var(--stroke-color);
+    border-radius:999px;padding:7px 9px;backdrop-filter:blur(10px);
+  }
+  .toolbar button{
+    font-family:Inter,sans-serif;font-size:12px;cursor:pointer;
+    background:transparent;color:#fafafab3;border:1px solid var(--stroke-color);
+    border-radius:999px;padding:5px 12px;
+  }
+  .toolbar button.on{background:#fff;color:#000;border-color:#fff;}
+
+  body.mobile .viewport{max-width:375px;margin:0 auto;border-left:1px solid #222;border-right:1px solid #222;}
+  body.mobile h2{font-size:30px;letter-spacing:-.3px;}
+  body.mobile h3{font-size:26px;}
+  body.mobile .grid-multimodal,
+  body.mobile .grid-human{grid-template-columns:1fr !important;}
+  body.mobile .pad50{padding:26px !important;}
+
+  .pad50{padding:50px;}
+  .center{display:flex;flex-direction:column;align-items:center;text-align:center;gap:24px;}
+  .grid-multimodal{display:grid;grid-template-columns:.9fr 1fr;}
+  .grid-human{display:grid;grid-template-columns:1fr .5fr;}
+  .dashed-r{border-right:1px dashed var(--stroke-color);}
+  .vlabel{
+    font-family:Inter,sans-serif;font-size:11px;letter-spacing:1.2px;
+    text-transform:uppercase;color:#fafafa66;margin-bottom:7px;
+  }
+  .note{
+    font-family:Inter,sans-serif;font-size:12px;color:#fafafa80;
+    border-top:1px solid #1c1c1c;margin-top:60px;padding:22px 0 70px;
+  }
+  .note code{color:#9fd; font-size:11px;}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button id="btnAnn" class="on">Annotations</button>
+  <button id="btnMobile">375px</button>
+</div>
+
+<div class="viewport">
+
+  <!-- ══ FeatureModes — video ADDED ══ -->
+  <section>
+    <div class="marketing-container">
+      <div class="box center pad50 ann" data-ann="ADDED · sub-agents · 14s loop">
+        <div style="max-width:790px"><h2>Built for Complexity. Proven at Scale.</h2></div>
+        <div style="max-width:600px">
+          <p>Trusted by professional developers, Fabric delivers predictable, maintainable
+          output while efficiently indexing and navigating codebases with millions of lines
+          across hundreds of thousands of files.</p>
+        </div>
+        <div><a href="#" class="btn-primary">Use cases</a></div>
+        <div style="width:100%;max-width:860px;margin-top:8px">
+          <video class="inline-video" src="sub-agents.mp4" poster="sub-agents-poster.jpg"
+                 muted loop playsinline autoplay></video>
+        </div>
+      </div>
+      <div class="horizontal-border"></div>
+    </div>
+  </section>
+
+  <!-- ══ MeetTheFuture — REMOVED ══ -->
+  <section>
+    <div class="marketing-container">
+      <div class="ghost ann removed" data-ann="REMOVED from EN (JP keeps it)">
+        <p><strong>Meet the Future of Coding</strong> — Performance · Security · Control</p>
+        <p style="margin-top:6px;font-size:13px">The “Performance” card duplicated the Multimodal claim below.
+        Removing the section also drops the homepage’s only SOC&nbsp;2 / air-gapped / RBAC mention.</p>
+      </div>
+      <div class="horizontal-border"></div>
+    </div>
+  </section>
+
+  <!-- ══ Multimodal — static svg REPLACED by two clips ══ -->
+  <section>
+    <div class="marketing-container">
+      <div class="box grid-multimodal">
+        <div class="pad50" style="display:flex;flex-direction:column;gap:8px;justify-content:center">
+          <h2>Text, Voice, and Visuals,<br>Better Together</h2>
+          <p>Fabric is the first coding IDE that&rsquo;s natively multi-modal.<br>
+          We combine natural language with graphic representation, increasing accuracy and
+          boosting efficiency &ndash; while lowering token consumption.</p>
+        </div>
+        <div class="ann" data-ann="REPLACED slate-mk2.svg · onboarding + document-attachments"
+             style="position:relative;overflow:hidden">
+          <img src="soft-pastel-drawing.webp" alt=""
+               style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
+          <div style="position:relative;z-index:1;display:flex;flex-direction:column;gap:16px;padding:32px 0 32px 32px">
+            <div>
+              <div class="vlabel">Voice</div>
+              <video class="inline-video" src="onboarding.mp4" poster="onboarding-poster.jpg"
+                     muted loop playsinline autoplay
+                     style="border-radius:14px 0 0 14px;border-right:none"></video>
+            </div>
+            <div>
+              <div class="vlabel">Documents</div>
+              <video class="inline-video" src="document-attachments.mp4" poster="document-attachments-poster.jpg"
+                     muted loop playsinline autoplay
+                     style="border-radius:14px 0 0 14px;border-right:none"></video>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="horizontal-border"></div>
+    </div>
+  </section>
+
+  <!-- ══ HumanFirst — explainability-card.png REPLACED ══ -->
+  <section>
+    <div class="marketing-container">
+      <div class="box grid-human">
+        <div class="pad50 dashed-r" style="display:flex;flex-direction:column;gap:24px">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h3>Human First</h3>
+            <p>Fabric is designed to empower developers from juniors to professionals.</p>
+          </div>
+          <div class="ann" data-ann="REPLACED explainability-card.png · code-review · 15s loop">
+            <video class="inline-video" src="code-review.mp4" poster="code-review-poster.jpg"
+                   muted loop playsinline autoplay></video>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:30px;justify-content:center;padding:26px">
+          <div style="display:flex;gap:22px">
+            <img src="check.svg" width="18" height="18" alt="" style="border:1px solid var(--stroke-color);border-radius:999px;padding:6px;background:#000">
+            <p><span style="color:#fff;font-weight:500">Planning</span><br>
+            Spec-driven development starts with detailed plans and visual architecture and system designs.</p>
+          </div>
+          <div style="display:flex;gap:22px">
+            <img src="exchange-m.svg" width="18" height="18" alt="" style="border:1px solid var(--stroke-color);border-radius:999px;padding:6px;background:#000">
+            <p><span style="color:#fff;font-weight:500">Iteration</span><br>
+            Our codebase embedding model gives Fabric deep understanding and recall where you can delegate full coding tasks to our agent.</p>
+          </div>
+          <div style="display:flex;gap:22px">
+            <img src="pencil-m.svg" width="18" height="18" alt="" style="border:1px solid var(--stroke-color);border-radius:999px;padding:6px;background:#000">
+            <p><span style="color:#fff;font-weight:500">Explainability</span><br>
+            Fabric tells you what it added, changed, and the reasoning, so anyone is able to learn and up-skill as they build.</p>
+          </div>
+        </div>
+      </div>
+      <div class="horizontal-border"></div>
+    </div>
+  </section>
+
+  <div class="marketing-container">
+    <div class="note">
+      <p style="color:#fafafa80">Mockup notes — these are the <strong>real encoded clips</strong> at the proposed trim
+      windows, playing muted and looping exactly as they would ship.
+      Sections shown are only the ones that change; Hero, PrivacyInAction, Testimonials, Performance,
+      Pricing, Roadmap and FAQ are untouched and omitted.
+      Headline font falls back to system sans here (Geist/Inter are not loaded), so letterforms differ
+      slightly from production — spacing, sizes and colours use the real tokens from
+      <code>globals.css</code>.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const b = document.body;
+  const btnAnn = document.getElementById('btnAnn');
+  const btnMobile = document.getElementById('btnMobile');
+  btnAnn.onclick = () => { b.classList.toggle('no-ann'); btnAnn.classList.toggle('on'); };
+  btnMobile.onclick = () => { b.classList.toggle('mobile'); btnMobile.classList.toggle('on'); };
+  // keep every clip playing even if the browser pauses offscreen video
+  document.querySelectorAll('video').forEach(v => {
+    v.play().catch(()=>{});
+    v.addEventListener('pause', () => v.play().catch(()=>{}));
+  });
+</script>
+</body>
+</html>

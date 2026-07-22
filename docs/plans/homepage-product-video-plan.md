@@ -3,7 +3,8 @@
 !!! tip "Live mockup"
     **[▶ Open the interactive "after" mockup](homepage-video-mockup/){ target=_blank }** — the real
     encoded clips at the proposed trim windows, playing muted and looping exactly as they would
-    ship. Toggle change annotations and a 375px viewport from the controls in the top right.
+    ship. Toggle change annotations, a 640px sub-agents width, and a 375px viewport from the
+    controls in the top right.
 
 ## Summary
 
@@ -21,6 +22,43 @@ removed from the EN page at the same time.
 | Hosting | Vercel Blob |
 | Playback | Muted autoplay loop, trimmed to short excerpts |
 | Meet the Future | Removed from EN homepage entirely (JP page keeps it) |
+| Source footage | **Re-record at 2× — blocks final assets** (see below) |
+| Multimodal panel | Pastel painting deleted; clips sit on the plain dark panel |
+| False copy claim | "Fabric is the first coding IDE that's natively multi-modal" removed, folded into this work |
+
+## Blocker — the source footage is not good enough
+
+Measured, not assumed:
+
+| | Bitrate |
+|---|---|
+| `sub-agents.mp4` as recorded | **839 kbps** @ 1280×720, 60fps |
+| Re-encoded for the mockup at CRF 18 / 30fps | **846 kbps** |
+
+The web encode now sits *at the source's own bitrate*, and SSIM against a lossless reference is
+0.9987 — so compression is no longer the limiting factor. The remaining softness is the capture
+itself: 839 kbps at 720p60 is roughly 14 kbit per frame for a screen full of small IDE text.
+These were recorded to sit in a small docs embed, not to fill a marketing homepage. Spending
+more bytes now only preserves the existing artifacts more faithfully.
+
+Compounding it, 720p is upscaled on a retina display: at 860 CSS px the browser draws 1720
+device px from a 1280 source, a 1.34× stretch.
+
+### Re-record specification
+
+| Setting | Value | Why |
+|---|---|---|
+| Resolution | **2560×1440** (2× a 1280×720 logical window) | Renders 1:1 at up to 1280 CSS px on a retina display — no upscaling at any width we'd use |
+| Frame rate | **30fps**, constant | 60fps halves the bits available per frame; screen content does not need it |
+| Bitrate | **≥ 8 Mbps**, or x264 CRF ≤ 18 | Master quality — we do the web encode from this, so headroom matters |
+| Codec | H.264 High, `yuv420p` | Universal browser support |
+| Subtitles | **Keep burned in** | Homepage clips play muted; the on-screen text carries the narration |
+| Intro splash | Omit, or leave trimmable head | The white "Fabric" card strobes on a black page |
+| Clips needed | `sub-agents`, `code-review`, `onboarding`, `document-attachments` | Only these four are used on the homepage |
+
+Deliver masters uncompressed-ish; the encode ladder in this plan runs off them. Until these
+land, the homepage ships either at a reduced 640px width (1:1 on retina with the current
+source) or not at all.
 
 ## Source Material — verified, not assumed
 
@@ -113,7 +151,7 @@ one job — *an autoplaying silent loop that behaves itself*:
 |---|---|
 | `FeatureModes` | **Add** `sub-agents` below the CTA. Section is currently text-only — heading, paragraph, button, no visual at all — so this fills a bare slot rather than replacing art. Capped at `max-w-[860px]`. |
 | `HumanFirst` | **Replace** the static `explainability-card.png` with `code-review`. Same slot, same box, directly evidences the "Explainability" timeline item. |
-| `Multimodal` | **Replace** the static `slate-mk2.svg` with a stacked pair — `onboarding` (Voice) above `document-attachments` (Documents) — inside the existing right-hand panel over the pastel backdrop. At half-width each renders ~500 CSS px wide, i.e. *downscaled* from 720p and genuinely sharp. |
+| `Multimodal` | **Replace** the static `slate-mk2.svg` with a stacked pair — `onboarding` (Voice) above `document-attachments` (Documents). The `soft-pastel-drawing.webp` backdrop is **deleted**: the clips sit directly on the dark panel with even padding. Each renders ~563 CSS px, i.e. *downscaled* even at 2× retina. Also drops the false "first coding IDE that's natively multi-modal" sentence from the body copy. |
 | `page.tsx` (EN) | **Remove** `<MeetTheFuture />`. The import stays — the JP page still renders it. |
 
 ![Homepage section changes](./homepage-video-sections.png)
@@ -129,7 +167,9 @@ one job — *an autoplaying silent loop that behaves itself*:
 | `src/app/[locale]/page.tsx` | Drop `<MeetTheFuture />` from the EN tree only |
 | `src/components/marketing/home/feature-modes.tsx` | Add `sub-agents` embed |
 | `src/components/marketing/home/human-first.tsx` | Swap `explainability-card.png` → `code-review` |
-| `src/components/marketing/home/multimodal.tsx` | Swap `slate-mk2.svg` → stacked `onboarding` + `document-attachments` |
+| `src/components/marketing/home/multimodal.tsx` | Swap `slate-mk2.svg` → stacked clips; delete the pastel backdrop; drop the false "first coding IDE" sentence |
+| `src/messages/en.json` | Remove the same false claim from `multimodal.description` |
+| `src/messages/jp.json` | Remove 「初の」 from `multimodal.description` — the identical claim in Japanese |
 | `package.json` | `@vercel/blob` as a devDependency |
 
 ## New Files
@@ -175,6 +215,12 @@ visitor and their browser observe — never the internals.
 
 - EN homepage does not render "Meet the Future of Coding"
 - JP homepage still does — the regression that matters, since one import feeds both
+
+**Copy accuracy**
+
+- no rendered surface contains the string "first coding IDE"
+- neither `en.json` nor `jp.json` reintroduces it via `multimodal.description`
+  (the keys are currently unread, so a test is the only thing stopping it coming back)
 
 **Manual/E2E**
 

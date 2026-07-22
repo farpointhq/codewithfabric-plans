@@ -113,6 +113,7 @@
 
 <div class="toolbar">
   <button id="btnAnn" class="on">Annotations</button>
+  <button id="btnNarrow">sub-agents @ 640px (1:1 retina)</button>
   <button id="btnMobile">375px</button>
 </div>
 
@@ -129,7 +130,7 @@
           across hundreds of thousands of files.</p>
         </div>
         <div><a href="#" class="btn-primary">Use cases</a></div>
-        <div style="width:100%;max-width:860px;margin-top:8px">
+        <div id="subAgentsWrap" style="width:100%;max-width:860px;margin-top:8px;transition:max-width .25s ease">
           <video class="inline-video" src="sub-agents.mp4" poster="sub-agents-poster.jpg"
                  muted loop playsinline autoplay></video>
         </div>
@@ -222,7 +223,13 @@
 
   <div class="marketing-container">
     <div class="note">
-      <p style="color:#fafafa80">Mockup notes — these are the <strong>real encoded clips</strong> at the proposed trim
+      <p style="color:#fafafa80"><strong>Encoding:</strong> clips are CRF&nbsp;18 at 30fps
+      (onboarding stays 15fps), which lands sub-agents at ~846&nbsp;kbps — the source itself is
+      839&nbsp;kbps at 720p60, so this is at the source&rsquo;s own bitrate and spending more
+      bytes cannot add detail that was never captured. Any remaining softness is the
+      <strong>source recording</strong> plus upscaling, not the encode. Use the
+      <em>sub-agents @ 640px</em> toggle to see it at exactly 1:1 on a retina display.</p>
+      <p style="color:#fafafa80;margin-top:14px">Mockup notes — these are the <strong>real encoded clips</strong> at the proposed trim
       windows, playing muted and looping exactly as they would ship.
       Sections shown are only the ones that change; Hero, PrivacyInAction, Testimonials, Performance,
       Pricing, Roadmap and FAQ are untouched and omitted.
@@ -240,6 +247,14 @@
   const btnMobile = document.getElementById('btnMobile');
   btnAnn.onclick = () => { b.classList.toggle('no-ann'); btnAnn.classList.toggle('on'); };
   btnMobile.onclick = () => { b.classList.toggle('mobile'); btnMobile.classList.toggle('on'); };
+
+  const btnNarrow = document.getElementById('btnNarrow');
+  const wrap = document.getElementById('subAgentsWrap');
+  btnNarrow.onclick = () => {
+    const narrow = wrap.style.maxWidth === '640px';
+    wrap.style.maxWidth = narrow ? '860px' : '640px';
+    btnNarrow.classList.toggle('on', !narrow);
+  };
   // keep every clip playing even if the browser pauses offscreen video
   document.querySelectorAll('video').forEach(v => {
     v.play().catch(()=>{});

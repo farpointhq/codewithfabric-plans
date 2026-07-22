@@ -22,7 +22,7 @@ removed from the EN page at the same time.
 | Hosting | Vercel Blob |
 | Playback | Muted autoplay loop, trimmed to short excerpts |
 | Meet the Future | Removed from EN homepage entirely (JP page keeps it) |
-| Source footage | **Re-record at 2× — blocks final assets** (see below) |
+| Source footage | **Re-record at 1080p / ≥8 Mbps — blocks final assets** (see below) |
 | Multimodal panel | Pastel painting deleted; clips sit on the plain dark panel |
 | False copy claim | "Fabric is the first coding IDE that's natively multi-modal" removed, folded into this work |
 
@@ -44,21 +44,45 @@ more bytes now only preserves the existing artifacts more faithfully.
 Compounding it, 720p is upscaled on a retina display: at 860 CSS px the browser draws 1720
 device px from a 1280 source, a 1.34× stretch.
 
+### How much resolution is actually needed
+
+Measured by rendering the mockup at three breakpoints and multiplying by device pixel ratio:
+
+| Clip | Desktop 1440 | Tablet 768 | Phone 375 |
+|---|---|---|---|
+| `sub-agents` | 860 css → **1720 @2×** | 638 → 1276 | 291 → 873 @3× |
+| `code-review` | 652 → 1304 | 391 → 782 | 290 → 870 @3× |
+| `onboarding` / `document-attachments` | 531 → 1062 | 324 → 648 | 279 → 837 @3× |
+
+**Phones are not the constraint** — clips render at 279–291 CSS px there, needing ~870 device
+px even at 3× DPR, comfortably inside 720p. The only tight spot is `sub-agents` at 860 css on a
+2× desktop, needing 1720 device px against 720p's 1280.
+
+So **1080p is the correct target**: 1920 clears the 1720 worst case with headroom. 1440p would
+only pay off at 3× DPR on desktop, which effectively does not exist.
+
+Note that **bitrate matters more than resolution here.** At 839 kbps a 1080p capture would still
+look mushy on dense text. If only one setting changes, change that one.
+
 ### Re-record specification
 
 | Setting | Value | Why |
 |---|---|---|
-| Resolution | **2560×1440** (2× a 1280×720 logical window) | Renders 1:1 at up to 1280 CSS px on a retina display — no upscaling at any width we'd use |
+| Resolution | **1920×1080** | Clears the 1720 device-px worst case; 1440p buys nothing at real DPRs |
+| Bitrate | **≥ 8 Mbps**, or x264 CRF ≤ 18 | The single most important setting — 839 kbps is what makes the current footage soft |
 | Frame rate | **30fps**, constant | 60fps halves the bits available per frame; screen content does not need it |
-| Bitrate | **≥ 8 Mbps**, or x264 CRF ≤ 18 | Master quality — we do the web encode from this, so headroom matters |
 | Codec | H.264 High, `yuv420p` | Universal browser support |
 | Subtitles | **Keep burned in** | Homepage clips play muted; the on-screen text carries the narration |
 | Intro splash | Omit, or leave trimmable head | The white "Fabric" card strobes on a black page |
 | Clips needed | `sub-agents`, `code-review`, `onboarding`, `document-attachments` | Only these four are used on the homepage |
 
-Deliver masters uncompressed-ish; the encode ladder in this plan runs off them. Until these
-land, the homepage ships either at a reduced 640px width (1:1 on retina with the current
-source) or not at all.
+Deliver masters at that quality; the encode ladder in this plan runs off them. To halve phone
+bytes, the pipeline also emits a 720p rendition served behind
+`<source media="(max-width: 640px)">` — phones only need ~870px, so they never fetch the 1080p
+file.
+
+Until new masters land, the homepage ships either at a reduced 640px `sub-agents` width (1:1 on
+retina with the current source) or not at all.
 
 ## Source Material — verified, not assumed
 
@@ -122,8 +146,9 @@ tooling, not application code, and nothing at runtime depends on it.
 public URLs. `@vercel/blob` is a **devDependency and upload-time only** — the site itself just
 fetches static CDN URLs, so nothing ships to the client bundle.
 
-Provisioning is a real prerequisite: the project currently has **no Blob store and no
-`BLOB_READ_WRITE_TOKEN`** (`vercel env ls production` shows none).
+✅ **Provisioned 2026-07-22.** Store `marketing-media` (`store_sMFx2w0Op8sQaF4o`), public access,
+`iad1`, linked to the `codewithfabric` project. `BLOB_READ_WRITE_TOKEN` is now in the
+development environment. Note the CLI rewrote a local `.env.local` as a side effect of linking.
 
 ### 3. Manifest
 

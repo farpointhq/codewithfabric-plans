@@ -93,17 +93,24 @@ same date):
 | User | Disposition | Notes |
 |---|---|---|
 | **ryan@monsurate.com** | Delete solo team → **add as MEMBER of the Farpoint Enterprise team** (owned by ryan@farpointhq.com) | Ryan's own other-app account; keeps access via Farpoint membership. |
-| **samuelalexander.mercier@gmail.com** (Sam Mercier) | Delete solo team → **add as MEMBER of the Farpoint Enterprise team** | Free guest — Canadian-government auditor evaluating the app. Verified low usage (8 requests, $0.00). |
-| **samitmhatre6@gmail.com** | **Delete the account** | Samit's personal test account. Trivial history (9 requests, $0.02) cascades away; delete rather than offboard per Ryan. |
-| **googlereview@farpointhq.com** | **Delete the account / retire team** | OAuth-review test account, never used (0 requests). |
-| **bradley@growthopia.io** (Bradley Rix) | **Not a paying customer.** Free trial **expires 2026-07-25**. Retire the solo team as part of cleanup. | 12 requests, $0.00, dormant since Jul 5. Pending Ryan: let lapse vs. sales reach-out. |
-| **jm@jeanmichel.me** (Jean-Michel Moreau) | **Not a paying customer.** Free trial **expires 2026-07-25**. Retire the solo team as part of cleanup. | 73 requests, $0.64, dormant since Jun 26. Pending Ryan: let lapse vs. sales reach-out. |
+| **samuelalexander.mercier@gmail.com** (Sam Mercier) | Delete solo team → **add as MEMBER of the Farpoint Enterprise team** | Trusted; kept. Canadian-government auditor evaluating the app. Verified low usage (8 requests, $0.00). |
+| **samitmhatre6@gmail.com** (Samit's personal gmail) | **PENDING** — see Open Decisions | Original call was delete; Ryan's "trusted member of the team, don't delete" may refer to this account. Not touching it until confirmed. |
+| **googlereview@farpointhq.com** | **LEAVE AS-IS — do not touch** | Active Google OAuth verification review in progress; the account must keep working. It stays Enterprise for now and remains in the account list by design. |
+| **bradley@growthopia.io** (Bradley Rix) | **Not a paying customer.** Free trial **expires 2026-07-25** (fine to let lapse). Retire the solo team as cleanup. | 12 requests, $0.00, dormant since Jul 5. "Should never have been Enterprise." |
+| **jm@jeanmichel.me** (Jean-Michel Moreau) | **Not a paying customer.** Free trial **expires 2026-07-25** (fine to let lapse). Retire the solo team as cleanup. | 73 requests, $0.64, dormant since Jun 26. "Should never have been Enterprise." |
 
 Note: trial expiry stops *unlimited* but does **not** clear `isEnterprise`, so
 Bradley's and Jean-Michel's solo teams must still be deleted to leave the account
 list — expiry alone does not clean them up. "Add as MEMBER of Farpoint" reuses
 the exact Cohort-1 mechanic: entitlement resolves through the Farpoint Enterprise
 team once they own no team of their own.
+
+**Root cause for Bradley/Jean-Michel:** neither is on an auto-enterprise domain,
+so they did not come through the domain path — they were marked Enterprise by a
+manual `provision-enterprise-user.ts` run. Ryan's point ("should never have been
+Enterprise") is a process gap in that script granting Enterprise+Unlimited for
+what should have been a trial/eval; worth a guard there, tracked separately from
+this cleanup.
 
 ### Sequencing
 
@@ -206,11 +213,10 @@ plan prefers deletion and flags the trade-off below.
    Recommended: **delete** the 38 owner-only solo teams (data-safe per the
    Appendix; smallest steady-state change). The alternative touches
    `resolvePrimaryTeam` globally. Which?
-2. **Cohort 2 — resolved** (see the table above). Remaining sub-question:
-   Bradley and Jean-Michel are non-paying trials that expire 2026-07-25 on their
-   own — **let them lapse and delete their solo teams as cleanup**, or hold for a
-   sales reach-out first? (Default: let lapse; near-zero usage, Ryan doesn't
-   know them.)
+2. **Cohort 2 — resolved except `samitmhatre6@gmail.com`.** Ryan said "trusted
+   member of the team, don't delete" — need to confirm whether that referred to
+   Samit's personal gmail (reversing the earlier delete → move it into Farpoint)
+   or to Sam Mercier. Nothing destructive runs on that account until confirmed.
 3. **Should a brand-new individual signup still get a personal team?** The
    invariant as written ("Members own nothing") is scoped here to *inside an
    Enterprise account*. Regular non-enterprise individuals still need a personal

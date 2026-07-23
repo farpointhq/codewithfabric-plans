@@ -70,18 +70,48 @@ All 32 owners **are already members of their anchor team** (Matt's or Amy's), so
 retiring their solo team drops entitlement straight onto the membership that
 already exists — no new rows to write.
 
-1. **Code — `ensureEnterpriseAccess`.** Split "anchor owner" from "domain
-   member". For a non-anchor domain user, do **not** create or keep an owned
-   Enterprise team; ensure anchor membership + the lifted LiteLLM row, and stop.
-   Anchor owners (Matt, Amy) keep the current behaviour.
-2. **Data — retire the 32 solo teams.** With the owned team gone,
-   `resolvePrimaryTeam` falls through to the anchor membership. Deletion is
-   data-safe: **0 `Usage` rows reference any of these teams, and none has a
-   sub-team** (verified). LiteLLM access is unaffected —
-   `ensureUnlimitedTeamMemberAccess` keeps the row lifted because the user is a
-   member of an active-unlimited team (the anchor).
+**The wrinkle discovered during implementation.** "Members own nothing" is not a
+one-line change, because *signup itself* mints the owned team:
+`teamCreateDataForNewUser` returns an **Enterprise+Unlimited** team for any
+auto-domain email, and it is created at both `auth.ts` (OAuth) and
+`signup/route.ts` (credentials). And `resolvePrimaryTeam` ranks *owned* teams
+above memberships. So simply "not creating" a team at sign-in isn't enough (the
+signup path already made one), and downgrading it to a personal team would leave
+`resolvePrimaryTeam` pointing at an INACTIVE team — a member with a broken plan.
+
+**The access-safe design (confined to `ensureEnterpriseAccess` + the migration —
+the go.team signup hot path is deliberately NOT touched):**
+
+1. **Code — `ensureEnterpriseAccess`, add an `isAnchorOwner` branch.** For a
+   non-anchor domain member:
+   a. Ensure anchor membership (existing helper).
+   b. **Confirm** the membership now exists. If it does: provision member-level
+      access (`ensureUnlimitedTeamMemberAccess` — LiteLLM lift + tier key via the
+      anchor's plan), and **retire an owner-only Enterprise team they hold**
+      (guarded: `ownerId === user`, `isEnterprise`, **no members, no child
+      teams**) so `resolvePrimaryTeam` falls through to the anchor. Never create
+      a new owned team.
+   c. **Safety belt (go.team hard rule — never block access):** if the anchor is
+      unresolvable (owner row missing, etc.), **fall through to today's
+      behaviour** and keep/create their owned Enterprise team. A member is never
+      left owning nothing *and* holding no membership.
+   This self-heals: an existing member's stray team is retired on their next
+   sign-in; a brand-new signup owns the team only until its first
+   `/api/user/status`, then consolidates. Anchor owners (Matt, Amy) are
+   unaffected.
+2. **Data — retire the 32 solo teams now**, rather than waiting for each to sign
+   in. Same guard as the code path. Data-safe: **0 `Usage` rows reference any of
+   these teams, and none has a sub-team** (verified). LiteLLM access is
+   unaffected — the user is already a member of the active-unlimited anchor.
 3. **Verify** on samples before and after: `resolvePrimaryTeam` returns the
    anchor team; the user's models allowlist is unchanged.
+
+Why not touch signup: changing `teamCreateDataForNewUser` / the two signup call
+sites is the biggest client's account-creation path, and a bootstrap edge (a
+member signing up before their anchor exists) could block access. Enforcing the
+invariant in the *reconcile* path instead — which runs on every entry point and
+already carries the never-throw guarantee — gets the same end-state with a
+smaller, self-healing, access-safe blast radius.
 
 ### Cohort 2 — standalone (6 teams)
 

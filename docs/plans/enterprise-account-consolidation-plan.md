@@ -94,7 +94,7 @@ same date):
 |---|---|---|
 | **ryan@monsurate.com** | Delete solo team → **add as MEMBER of the Farpoint Enterprise team** (owned by ryan@farpointhq.com) | Ryan's own other-app account; keeps access via Farpoint membership. |
 | **samuelalexander.mercier@gmail.com** (Sam Mercier) | Delete solo team → **add as MEMBER of the Farpoint Enterprise team** | Trusted; kept. Canadian-government auditor evaluating the app. Verified low usage (8 requests, $0.00). |
-| **samitmhatre6@gmail.com** (Samit's personal gmail) | **PENDING** — see Open Decisions | Original call was delete; Ryan's "trusted member of the team, don't delete" may refer to this account. Not touching it until confirmed. |
+| **samitmhatre6@gmail.com** (Samit's personal gmail) | Delete solo team → **add as MEMBER of the Farpoint Enterprise team** | Trusted; kept, not deleted. Same mechanic as Sam and ryan@monsurate. |
 | **googlereview@farpointhq.com** | **LEAVE AS-IS — do not touch** | Active Google OAuth verification review in progress; the account must keep working. It stays Enterprise for now and remains in the account list by design. |
 | **bradley@growthopia.io** (Bradley Rix) | **Not a paying customer.** Free trial **expires 2026-07-25** (fine to let lapse). Retire the solo team as cleanup. | 12 requests, $0.00, dormant since Jul 5. "Should never have been Enterprise." |
 | **jm@jeanmichel.me** (Jean-Michel Moreau) | **Not a paying customer.** Free trial **expires 2026-07-25** (fine to let lapse). Retire the solo team as cleanup. | 73 requests, $0.64, dormant since Jun 26. "Should never have been Enterprise." |
@@ -213,10 +213,10 @@ plan prefers deletion and flags the trade-off below.
    Recommended: **delete** the 38 owner-only solo teams (data-safe per the
    Appendix; smallest steady-state change). The alternative touches
    `resolvePrimaryTeam` globally. Which?
-2. **Cohort 2 — resolved except `samitmhatre6@gmail.com`.** Ryan said "trusted
-   member of the team, don't delete" — need to confirm whether that referred to
-   Samit's personal gmail (reversing the earlier delete → move it into Farpoint)
-   or to Sam Mercier. Nothing destructive runs on that account until confirmed.
+2. **Cohort 2 — fully resolved** (see the table above). No account is deleted:
+   ryan@monsurate, Sam Mercier and Samit's gmail all become Farpoint members;
+   googlereview is left untouched; Bradley/Jean-Michel lapse and their teams are
+   retired.
 3. **Should a brand-new individual signup still get a personal team?** The
    invariant as written ("Members own nothing") is scoped here to *inside an
    Enterprise account*. Regular non-enterprise individuals still need a personal

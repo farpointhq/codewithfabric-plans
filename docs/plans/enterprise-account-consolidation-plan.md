@@ -83,14 +83,27 @@ already exists — no new rows to write.
 3. **Verify** on samples before and after: `resolvePrimaryTeam` returns the
    anchor team; the user's models allowlist is unchanged.
 
-### Cohort 2 — standalone (6 teams: Bradley/growthopia, Jean-Michel/jeanmichel.me, Sam Mercier/gmail, samit/gmail, ryan@monsurate.com, googlereview test)
+### Cohort 2 — standalone (6 teams)
 
-Members of nothing, and **not** on an auto-enterprise domain — so once
-declassified they will *not* be re-enterprised, and the change sticks. "On
-monthly plans" means clearing `isUnlimited` + subscription so they fall to
-BYOK/credits. This is an **access change**, so it needs a per-account decision
-(see Open Decisions) — two of these (Bradley, Jean-Michel) were personally
-provisioned last month, and `googlereview` is a test account.
+Members of nothing, and **not** on an auto-enterprise domain — so once their
+solo team is gone they will *not* be re-enterprised, and the change sticks.
+Dispositions decided by Ryan on 2026-07-23 (billing/usage verified read-only,
+same date):
+
+| User | Disposition | Notes |
+|---|---|---|
+| **ryan@monsurate.com** | Delete solo team → **add as MEMBER of the Farpoint Enterprise team** (owned by ryan@farpointhq.com) | Ryan's own other-app account; keeps access via Farpoint membership. |
+| **samuelalexander.mercier@gmail.com** (Sam Mercier) | Delete solo team → **add as MEMBER of the Farpoint Enterprise team** | Free guest — Canadian-government auditor evaluating the app. Verified low usage (8 requests, $0.00). |
+| **samitmhatre6@gmail.com** | **Delete the account** | Samit's personal test account. Trivial history (9 requests, $0.02) cascades away; delete rather than offboard per Ryan. |
+| **googlereview@farpointhq.com** | **Delete the account / retire team** | OAuth-review test account, never used (0 requests). |
+| **bradley@growthopia.io** (Bradley Rix) | **Not a paying customer.** Free trial **expires 2026-07-25**. Retire the solo team as part of cleanup. | 12 requests, $0.00, dormant since Jul 5. Pending Ryan: let lapse vs. sales reach-out. |
+| **jm@jeanmichel.me** (Jean-Michel Moreau) | **Not a paying customer.** Free trial **expires 2026-07-25**. Retire the solo team as part of cleanup. | 73 requests, $0.64, dormant since Jun 26. Pending Ryan: let lapse vs. sales reach-out. |
+
+Note: trial expiry stops *unlimited* but does **not** clear `isEnterprise`, so
+Bradley's and Jean-Michel's solo teams must still be deleted to leave the account
+list — expiry alone does not clean them up. "Add as MEMBER of Farpoint" reuses
+the exact Cohort-1 mechanic: entitlement resolves through the Farpoint Enterprise
+team once they own no team of their own.
 
 ### Sequencing
 
@@ -193,10 +206,11 @@ plan prefers deletion and flags the trade-off below.
    Recommended: **delete** the 38 owner-only solo teams (data-safe per the
    Appendix; smallest steady-state change). The alternative touches
    `resolvePrimaryTeam` globally. Which?
-2. **Cohort 2 disposition.** Convert all 6 to monthly/BYOK now (Bradley,
-   Jean-Michel, Sam Mercier, samit gmail, ryan@monsurate, googlereview)? Notify
-   + grace first for the two personally-provisioned ones? `googlereview` and
-   `ryan@monsurate` (the *other* app's owner) can almost certainly just be cut.
+2. **Cohort 2 — resolved** (see the table above). Remaining sub-question:
+   Bradley and Jean-Michel are non-paying trials that expire 2026-07-25 on their
+   own — **let them lapse and delete their solo teams as cleanup**, or hold for a
+   sales reach-out first? (Default: let lapse; near-zero usage, Ryan doesn't
+   know them.)
 3. **Should a brand-new individual signup still get a personal team?** The
    invariant as written ("Members own nothing") is scoped here to *inside an
    Enterprise account*. Regular non-enterprise individuals still need a personal

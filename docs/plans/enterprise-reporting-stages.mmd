@@ -1,0 +1,20 @@
+%%{init: {'theme':'dark', 'themeVariables': {'fontSize':'16px'}}}%%
+flowchart TB
+  subgraph s1["Stage 1: superadmin-only"]
+    A["Port Samit's leaderboard + alerts<br/>into /dashboard/reporting<br/>Team selector, per-user tokens,<br/>GitHub PR/issue counts, hour-of-day"]
+  end
+
+  subgraph s2["Stage 2: turn on Matt"]
+    B["Enterprise team owners/admins<br/>see their OWN team only<br/>No new data work - access change only"]
+  end
+
+  subgraph s3["Stage 3: attribution"]
+    C["Fabric desktop app<br/>enterprise-managed seat?"]
+    C -->|yes: org enabled tracking| D["Tag requests via LiteLLM<br/>metadata.tags: repo / product / session<br/>+ session to commit/PR events"]
+    C -->|"no (individual plan)"| E["NO tracking - code path absent<br/>users pay for privacy"]
+    D --> F[("Attribution rollup tables<br/>never raw SpendLogs")]
+    F --> G["Reports: per product, per user,<br/>per PR, per commit"]
+    F --> H["Anomaly report: spend not matching<br/>an approved product build"]
+  end
+
+  A --> B --> C

@@ -70,3 +70,4 @@ nav:
   - Teams & Billing Architecture: plans/teams-billing-architecture-plan.md
   - "Teams & Billing \u2014 LiteLLM Cap Enforcement (Step 6)": plans/teams-billing-litellm-enforcement-plan.md
   - "Issue #278 \u2013 Auth/Billing Architecture Review": plans/issue-278-plan.md
+  - "Enterprise Reporting \u2014 Tokens vs Productivity": plans/enterprise-reporting-plan.md

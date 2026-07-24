@@ -1,0 +1,27 @@
+%%{init: {'theme':'dark', 'themeVariables': {'fontSize':'16px'}}}%%
+flowchart LR
+  subgraph existing["Already in production"]
+    LL["LiteLLM proxy"] -->|per-request callback| CB["/api/litellm/callback"]
+    CB --> DUS[("DailyUsageSummary<br/>date x model x user<br/>tokens / requests / cost")]
+  end
+
+  subgraph ported["Ported from Samit's goteam-micro-site"]
+    GH["GitHub Search API<br/>author:login is:pr ...<br/>GITHUB_REPORTING_TOKEN"]
+    SCORE["lib/reporting/productivity.ts<br/>PR=10 issue=5 commit=3 review=2<br/>alert rules (pure functions)"]
+  end
+
+  subgraph new["New in codewithfabric"]
+    MAP[("GithubLoginMapping<br/>userId &lt;-&gt; githubLogin")]
+    API["/api/reporting<br/>team-scoped join"]
+    PAGE["/dashboard/reporting<br/>Leaderboard + Active Alerts<br/>+ team hour-of-day chart"]
+  end
+
+  DUS --> API
+  GH --> API
+  MAP --> API
+  API --> SCORE
+  SCORE --> API
+  API --> PAGE
+
+  GATE{{"Superadmin gate<br/>Farpoint allow-list<br/>(Stage 2: + enterprise owners)"}}
+  GATE --> PAGE

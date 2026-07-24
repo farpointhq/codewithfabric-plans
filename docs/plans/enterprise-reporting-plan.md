@@ -46,7 +46,12 @@ Flip the gate from allow-list-only to `isSuperAdmin(email) || (team.isEnterprise
 Items #1–#4 per-product/PR/commit and #5 (anomaly vs an approved-product registry) cannot be answered honestly from server-side data — only the Fabric client knows which repo/branch/session a request belongs to and which commits/PRs a session produced. Design constraints agreed with Ryan:
 
 - **Enterprise-managed seats only**, enabled org-wide by the company. No privacy expectation on enterprise seats — but **non-enterprise users get zero tracking; the code path must not exist for them.** They are paying for privacy.
-- Attribution rides in the LiteLLM **request-body `metadata.tags`** (repo/product/session). Custom headers are stripped by LiteLLM before logging, so tags are the only channel that survives to SpendLogs.
+- **No customer GitHub access required.** Future enterprise clients never hand us a token: the Fabric client itself is the sensor. It knows the open workspace, the checked-out branch, the commits each session authors, and the moment a PR is created (it drives git/gh) — it reports these as events; we never call the customer's GitHub.
+- **Two-level attribution model** (agreed with Ryan 2026-07-23):
+    1. *Chat → repo:* every request from any chat in a workspace is tagged with that repo. Per-repo and per-repo-per-user token reports fall out directly.
+    2. *Chats → PR:* a PR's cost aggregates **many conversations that predate the PR** — so linkage is by **branch + commit SHAs, never time windows**. Requests carry `repo + branch`; sessions record authored SHAs; when the client reports "PR #N opened from branch B with SHAs […]", PR cost = all tokens tagged that repo+branch plus tokens from sessions that authored the PR's commits. This is precisely what Stage 1's window-join cannot do (tokens burned last week producing a PR pushed today).
+    - Accepted limits, stated honestly: exploratory spend that never lands in a PR stays repo-level (that IS the #5 anomaly bucket); a chat about repo A while repo B is open misattributes — workspace is a proxy.
+- Attribution rides in the LiteLLM **request-body `metadata.tags`** (repo/branch/session). Custom headers are stripped by LiteLLM before logging, so tags are the only channel that survives to SpendLogs. Session→commit/PR events go to a portal ingestion endpoint.
 - Reports read from **rollup tables**, never raw SpendLogs (112 GB before retention work).
 - Approved-product registry (team owners register products/repo patterns) → untagged or unregistered spend is the #5 anomaly report.
 

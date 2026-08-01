@@ -1,0 +1,65 @@
+%%{init: {'theme':'dark', 'themeVariables': {'fontSize':'15px'}}}%%
+flowchart TB
+  subgraph DETECT["1. Fix-PR identification (cheap — no blame, no clone)"]
+    direction TB
+    ALL["Every merged PR in the window"] --> T1{"title matches<br/>^Revert &quot;...&quot;"}
+    T1 -->|yes| REV["<b>detector = revert</b><br/>confidence HIGH<br/>body carries 'Reverts owner/repo#N'<br/>-> exact introducing PR, no blame needed"]
+    T1 -->|no| T2{"conventional-commit<br/>fix: or fix(scope):<br/>on PR title or squash message"}
+    T2 -->|yes| FIXC["<b>detector = conventional_fix</b><br/>confidence MEDIUM"]
+    T2 -->|no| T3{"closes/fixes a linked issue<br/>carrying a bug-ish label"}
+    T3 -->|yes| ISS["<b>detector = issue_linked</b><br/>confidence MEDIUM"]
+    T3 -->|no| SKIP[["Not a fix PR — no lineage work"]]
+
+    FIXC --> NEG{"<b>Exclusions</b><br/>refactor: chore: style: perf:<br/>docs: test: build: ci:<br/>'fix typo' 'fix lint' 'fix build'<br/>bot authors, docs-only diffs"}
+    ISS --> NEG
+    NEG -->|"matched — drop"| SKIP
+    NEG -->|clean| BUDGET
+  end
+
+  subgraph BLAME["2. SZZ-lite blame (budgeted)"]
+    direction TB
+    BUDGET{"Nightly blame budget:<br/>max 20 blame queries/repo/night,<br/>overflow queued to tomorrow"} --> HUNK["Take only the lines the fix<br/><b>DELETED or MODIFIED</b>.<br/>Added lines have no prior author."]
+    HUNK --> TOPK["Blame the top 5 files<br/>by deleted-line count only"]
+    TOPK --> GQLB["GraphQL Commit.blame(path)<br/>at expression = mergeCommitSha^<br/>(parent, so the fix never blames itself)<br/>-> ranges -> commit -> associatedPullRequests"]
+    GQLB --> FILT{"<b>False-positive controls</b><br/>drop: bot commits, merge commits,<br/>excluded/generated files,<br/>whitespace-only ranges,<br/>links with linesMatched &lt; 3"}
+    FILT -->|dropped| SKIP
+    FILT -->|kept| LINK
+  end
+
+  subgraph ATTR["3. Attribution — authorship AND review"]
+    direction TB
+    LINK["Write PrDefectLink<br/>fixPr -> introducingPr<br/>linesMatched, filesMatched,<br/>detector, confidence"] --> WHO["From the introducing PR record:<br/><b>authorLogin</b> -> authorship defect<br/><b>mergedByLogin</b> + approving reviewers<br/>-> <b>review-quality defect</b> (D4)"]
+    WHO --> SELFF{"fix author == introducing author?"}
+    SELFF -->|yes| SELFCOL["counted, but reported in a<br/>separate <b>self-corrected</b> column —<br/>fixing your own bug fast is healthy"]
+    SELFF -->|no| OTHCOL["counted as other-corrected"]
+  end
+
+  subgraph MATURE["4. Maturity / exposure normalisation — the part that makes the rate honest"]
+    direction TB
+    H["Fit H(a) from the org's OWN history:<br/>empirical CDF of detection lag<br/>a = fixMergedAt - introMergedAt,<br/>normalised over [0, MATURITY_HORIZON = 180d]"]
+    H --> EXP["Expected exposure of PR p =<br/>H(min(ageDays_p, 180))<br/>a PR merged yesterday contributes ~0.05,<br/>not 1.0, to the denominator"]
+    EXP --> RATE["<b>correctedLaterRate(person) =</b><br/>defective PRs / SUM over p of H(age_p)<br/>i.e. observed defects / MATURE-PR-EQUIVALENTS"]
+    RATE --> FLOOR{"SUM H(age_p) &lt; 5<br/>mature-PR-equivalents?"}
+    FLOOR -->|yes| INSUF[["Render 'insufficient exposure'.<br/>Never a number.<br/>(Kaplan-Meier at-risk floor analogue)"]]
+    FLOOR -->|no| SHOW["Show the rate — with its<br/>exposure denominator alongside"]
+  end
+
+  subgraph GUARD["5. Hard guard rails"]
+    direction TB
+    G1["<b>Never</b> feeds the Impact Index.<br/>SZZ precision is published as imperfect;<br/>a noisy signal must not move a headline score."]
+    G2["Suppressed per-person when the GDPR flag<br/>is on or scoredMembers &lt; 5 (D5)"]
+    G3["Reverts: subtract the original PR's N/C/F<br/><b>only if both merged in the SAME window</b>.<br/>Never retroactively rewrite a shipped report."]
+    G4["Beyond 180 days, attribution to the original<br/>author is not defensible — code has been<br/>edited by others and requirements moved."]
+  end
+
+  REV --> LINK
+  SHOW --> G1
+  SELFCOL --> H
+  OTHCOL --> H
+
+  classDef det fill:#2d3561,stroke:#8f9bd6,color:#fff
+  classDef guard fill:#5e2d2d,stroke:#d69b9b,color:#fff
+  classDef key fill:#1f4b3f,stroke:#6bd6a6,color:#fff
+  class REV,FIXC,ISS det
+  class G1,G2,G3,G4,INSUF guard
+  class RATE,EXP,H key

@@ -1,0 +1,38 @@
+%%{init: {'theme':'dark', 'themeVariables': {'fontSize':'15px'}}}%%
+flowchart TB
+  START(["For each merged PR p,<br/>for each non-author actor x"]) --> BOT{"x in BOT_LOGINS?<br/>claude, github-actions[bot],<br/>dependabot[bot], renovate[bot],<br/>copilot-swe-agent[bot],<br/>or __typename == Bot"}
+  BOT -->|yes| DROP[["No assist.<br/>Recorded as aiCoAuthored<br/>for the AI-co-authorship column"]]
+  BOT -->|no| RESOLVE{"Can x be resolved to a<br/>real GitHub user?<br/>commit.author.user is null ~28% of the time"}
+  RESOLVE -->|"user null"| EMAIL{"commit.author.email matches<br/>a mapped team email?"}
+  EMAIL -->|no| DROP2[["Drop the entry.<br/>Never guess an identity"]]
+  EMAIL -->|yes| ROLES
+  RESOLVE -->|"user present"| ROLES
+
+  ROLES["Evaluate EVERY applicable role,<br/>then take the MAXIMUM<br/>(never the sum)"] --> R1 & R2 & R3 & R4 & R5 & R6
+
+  R1{"x pushed a commit<br/>authored by x on p?"} -->|yes| P1["<b>Co-implementer — 0.50</b>"]
+  R2{"x submitted<br/>CHANGES_REQUESTED?"} -->|yes| P2["<b>Changes-requested reviewer — 0.40</b>"]
+  R3{"mergedBy == x<br/>AND x != author?"} -->|yes| P3["<b>Non-author merge — 0.35</b><br/>UPGRADED from 0.15 (D2)<br/>a non-author merge IS the review<br/>in a squash-merge trunk workflow"]
+  R4{"x APPROVED<br/>with comments > 0?"} -->|yes| P4["<b>Substantive approver — 0.30</b>"]
+  R5{"x is a Co-Authored-By<br/>trailer on a commit<br/>x didn't author?"} -->|yes| P5["<b>Co-author trailer — 0.25</b>"]
+  R6{"x APPROVED<br/>with comments == 0?"} -->|yes| P6["<b>Rubber-stamp approver — 0.10</b>"]
+
+  P1 & P2 & P3 & P4 & P5 & P6 --> MAX["assist(x, p) = max(points), capped at 1.0<br/>written to PrAssistRecord with the winning role"]
+
+  SELF{"mergedBy == author?"} -->|yes| ZERO[["<b>Self-merge — 0.00</b><br/>no assist row created.<br/>74% of this org's PRs self-merge —<br/>this never dents the AUTHOR's throughput"]]
+  START -.checked first.-> SELF
+
+  MAX --> PERIOD["Period total A = sum of assist points"]
+  PERIOD --> ANCHOR["<b>Reciprocity anchor A_R = 1.25 pts/week</b><br/>derived: 3.5 accepted PRs/wk (DX P50) x 0.35<br/>= accept as much as you author<br/>REPLACES the proposal's unanchored 2.0"]
+  ANCHOR --> RHAT["R = min(A/W / 1.25, 2) / 2"]
+
+  RHAT --> CULTURE{"reviewCultureRate =<br/>PRs with an APPROVAL<br/><b>OR</b> a non-author merge<br/>>= 10%? (D2)"}
+  CULTURE -->|"yes — 26% for farpointhq"| LIVE[["w_R = 0.20, collaboration column shown"]]
+  CULTURE -->|"no — self-merge-only org"| OFF[["w_R = 0, column hidden,<br/>other three weights renormalised to 1.0<br/>(better than showing everyone a zero)"]]
+
+  classDef pts fill:#4a2d5e,stroke:#c99bd6,color:#fff
+  classDef stop fill:#5e2d2d,stroke:#d69b9b,color:#fff
+  classDef key fill:#1f4b3f,stroke:#6bd6a6,color:#fff
+  class P1,P2,P4,P5,P6 pts
+  class P3,ANCHOR key
+  class DROP,DROP2,ZERO stop

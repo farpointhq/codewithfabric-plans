@@ -1,0 +1,77 @@
+%%{init: {'theme':'dark', 'themeVariables': {'fontSize':'15px'}}}%%
+flowchart TB
+  subgraph GH["GitHub (customer org)"]
+    direction TB
+    GQL["GraphQL search: type ISSUE<br/>org + merged window, 100 PRs/page<br/>files(100) reviews(20) commits(20)<br/><b>3 rate-limit points / page</b>"]
+    ATTR["GET .gitattributes<br/>linguist-generated<br/>cached per repo@sha"]
+    BLAME["Commit.blame(path)<br/>+ associatedPullRequests<br/><b>v2.1 only, budgeted</b>"]
+  end
+
+  subgraph CRON["Nightly ingest — /api/cron/impact-ingest (Vercel cron, CRON_SECRET)"]
+    direction TB
+    CUR["ImpactIngestCursor<br/>per team: resume point + time budget<br/>stops at 240s, next run continues"]
+    WIN["Adaptive window halving<br/>split window when issueCount > 1000"]
+    EXCL["Exclusion engine v1<br/>Copilot path list + linguist-generated<br/>stamped exclusionListVersion"]
+    DERIV["Per-PR derivation<br/>per-file max(add,del) -> CHURN_CAP 3000<br/>file count -> FILE_CAP 40"]
+    ASSIST["Assist engine<br/>max(applicable role points), BOT_LOGINS<br/>self-merge = 0"]
+  end
+
+  subgraph DB["Postgres (Neon, fabric_portal)"]
+    direction TB
+    PIR[("PrImpactRecord<br/><b>raw + derived, immutable after merge</b>")]
+    PAR[("PrAssistRecord<br/>one row per (PR, login, role)")]
+    PDL[("PrDefectLink — v2.1<br/>fix PR -> introducing PR + reviewer")]
+    ANCH[("TeamImpactAnchors<br/>own-history, trailing 4 quarters")]
+    TGC[("Team.githubReportingToken<br/><b>encrypted PAT — already on main</b><br/>+ NEW githubOrgLogin column")]
+    DUS[("DailyUsageSummary<br/><b>costCents — already exists</b>")]
+  end
+
+  subgraph COMP["Score compute (pure, src/lib/reporting/impact/*)"]
+    direction TB
+    TERMS["Period terms per member<br/>N, C, F, A over W weeks"]
+    DUAL["<b>Dual normalisation (D1)</b><br/>industry anchors AND own-history anchors<br/>same terms, two anchor sets"]
+    ADAPT["Adaptive collaboration weight (D2)<br/>reviewCultureRate = approvals OR non-author merges<br/>w_R = 0.20 if >= 0.10 else 0, renormalise"]
+    IDX["ImpactIndex = 100 x (0.40T + 0.30S + 0.10B + 0.20R)<br/>+ full decomposition for the tooltip"]
+    EFF["Efficiency view<br/>costPerMergedPR (primary)<br/>costPer1kEffLines (counter-metric)"]
+  end
+
+  subgraph OUT["API + UI"]
+    direction TB
+    PRIV{"applyPrivacyPolicy()<br/><b>server-side (D5)</b><br/>individualReportingDisabled?<br/>scoredMembers < 5?"}
+    ROLL["Team roll-up payload<br/><b>default view (D3)</b><br/>median-of-members index, sums, bands"]
+    MEMB["members[] — only when<br/>?view=members AND privacy allows"]
+    UI["/dashboard/reporting<br/>roll-up first, per-person behind a click<br/>standing caption + published formula"]
+  end
+
+  GQL --> WIN
+  ATTR --> EXCL
+  CUR --> WIN --> EXCL --> DERIV --> ASSIST
+  ASSIST --> PIR
+  ASSIST --> PAR
+  BLAME -.->|"v2.1 only"| PDL
+  PIR -.->|"nightly rollup"| ANCH
+  TGC -.->|"resolveTeamReportingToken()"| GQL
+  TGC -.-> BLAME
+
+  PIR --> TERMS
+  PAR --> TERMS
+  ANCH --> DUAL
+  TERMS --> DUAL --> ADAPT --> IDX
+  DUS --> EFF
+  PIR --> EFF
+  IDX --> PRIV
+  EFF --> PRIV
+  PDL -.->|"quality column, never in the index"| PRIV
+  PRIV -->|always| ROLL
+  PRIV -->|"only if allowed"| MEMB
+  ROLL --> UI
+  MEMB --> UI
+
+  classDef gh fill:#2d3561,stroke:#8f9bd6,color:#fff
+  classDef store fill:#1f4b3f,stroke:#6bd6a6,color:#fff
+  classDef calc fill:#4a2d5e,stroke:#c99bd6,color:#fff
+  classDef gate fill:#5e2d2d,stroke:#d69b9b,color:#fff
+  class GQL,ATTR,BLAME gh
+  class PIR,PAR,PDL,ANCH,TGC,DUS store
+  class TERMS,DUAL,ADAPT,IDX,EFF calc
+  class PRIV gate

@@ -1,0 +1,35 @@
+flowchart TB
+  subgraph SRC["PrImpactRecord (already ingested — no new ingest)"]
+    PR["Merged PR p<br/>effectiveChurn C_p (cap 3000)<br/>effectiveFiles F_p (cap 40)<br/>assists[] {login, role}"]
+  end
+
+  PR --> SC["<b>Size credit</b> SC(p)<br/>ramp(C_p) x [0.70 + 0.34 ln(1+C_p/115) + 0.09 ln(1+F_p/7)]<br/>ramp = min(1, C_p / 60)<br/><i>1.0 = one median 115-line PR &nbsp;|&nbsp; 1.99 = the 3000-line cap</i>"]
+
+  SC --> FX["x FIX_MULTIPLIER<br/>(1.25 when isFixPr — v3.1 slot,<br/>field is unpopulated today)"]
+
+  FX --> AUTH["<b>Author</b> x 1.00"]
+  FX --> REV["<b>Assist scalars</b><br/>changes_requested 1.00<br/>co_implementer 0.60<br/>substantive_approve 0.50<br/>non_author_merge 0.35<br/>co_author_trailer 0.25<br/>rubber_stamp 0.05"]
+
+  REV --> CAP1["per-login: max(role), never sum<br/>(inherited from v2 assists.ts)"]
+  CAP1 --> CAP2["per-PR pool cap<br/>assist VP total &le; 1.0 x SC(p)<br/><i>binds on 19 / 430 PRs</i>"]
+  CAP2 --> CAP3["per-author concentration cap<br/>&le; 50% of a member's review VP<br/>from any single author<br/><i>Karl's real max: 31.5%</i>"]
+
+  AUTH --> POOL["<b>ONE value-point pool per member per period</b><br/>VP = &Sigma; authored SC + &Sigma; scalar x SC(reviewed)"]
+  CAP3 --> POOL
+
+  POOL --> RATE["value rate = VP / weeks"]
+
+  RATE --> IDX["<b>Impact Index</b><br/>100 x min(rate / ANCHOR, 2) / 2<br/>single saturation on the TOTAL —<br/>no per-dimension caps"]
+
+  ANC1["<b>Industry anchor</b><br/>3.5 VP / person-week<br/>= DX Core 4 P50 (3.5 PRs/wk)<br/>x SC(median PR) = 1.0"] --> IDX
+  ANC2["<b>Own-history anchor</b><br/>median member VP rate,<br/>trailing 26 wks before period start<br/><i>measured: 3.67 VP/wk — within 5%<br/>of the industry anchor</i>"] --> IDX
+
+  IDX --> OUT["Index 0-100<br/>50 = at benchmark<br/>100 = at or above 2x benchmark"]
+  POOL --> TT["<b>Value-sources breakdown</b><br/>Authored: n PRs, X VP<br/>Reviews: n PRs, Y VP<br/>Merges: n PRs, Z VP"]
+
+  classDef hi fill:#1e3a5f,stroke:#4a9eff,color:#e8f1ff
+  classDef cap fill:#3f2a1e,stroke:#d98c4a,color:#ffeede
+  classDef anc fill:#1e3f2a,stroke:#4ad98c,color:#e8ffef
+  class SC,POOL,IDX hi
+  class CAP1,CAP2,CAP3 cap
+  class ANC1,ANC2 anc

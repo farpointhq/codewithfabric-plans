@@ -61,6 +61,7 @@ markdown_extensions:
     permalink: true
 nav:
 - Home: index.md
+- "Engineering Impact Index v3": plans/impact-score-v3-plan.md
 - "Engineering Impact Score v2": plans/impact-score-v2-plan.md
 - Plans:
   - "Issue #64 \u2013 Team Management Schema & Auth": plans/issue-64-plan.md

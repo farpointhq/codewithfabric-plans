@@ -176,7 +176,7 @@ All figures computed read-only from `PrImpactRecord` where `orgLogin = 'farpoint
 | **Mena** `Edolor` | 18 | 5 | 11,406 | **45** | **36** | 35 |
 | `samit-farpoint` | 17 | 4 | 8,267 | 46 | 35 | 34 |
 | `danial-farpoint` | 20 | 0 | 0 | 44 | 34 | 33 |
-| **Daniel** (pure reviewer) | 0 | 25 | 46,531 | **8** | **28** | 26 |
+| **Daniel Lam** (pure reviewer; †departed) | 0 | 25 | 46,531 | **8** | **28** | 26 |
 | `RamtinSirjani` | 7 | 10 | 22,419 | 39 | 26 | 24 |
 
 ### Window B — 2026-06-21 → 2026-07-21, W = 4.286 weeks
@@ -187,7 +187,7 @@ All figures computed read-only from `PrImpactRecord` where `orgLogin = 'farpoint
 | **Karl** `jensen` | 20 | 49 | **87** | **100** | 100 |
 | `erfan-shafagh-fp` | 14 | 3 | 59 | 66 | 100 |
 | `danial-farpoint` | 11 | 0 | 54 | 58 | 88 |
-| **Daniel** (pure reviewer) | 0 | 15 | **14** | **51** | 77 |
+| **Daniel Lam** (pure reviewer; †departed) | 0 | 15 | **14** | **51** | 77 |
 | **Mena** `Edolor` | 7 | 1 | **50** | **47** | 72 |
 | `samit-farpoint` | 6 | 1 | 49 | 42 | 63 |
 | `RamtinSirjani` | 2 | 2 | 38 | 19 | 29 |
@@ -233,14 +233,16 @@ This is the philosophy working as specified, not a defect: v3 says 18 very large
 
 **90 days.** 28 authored (36.1 VP) + 5 assists (6.0 VP) = 42.1 VP → 3.27 VP/week → **index 47** (v2: 49) — essentially unchanged, which is the reassuring case: a member whose PR sizes cluster near the median (mean 651 lines) scores the same under both models. **June:** 14 authored + 3 assists = 19.8 VP → 4.63 VP/week → **index 66** (v2: 59) on the industry anchor, **100** on own-history.
 
-### 5. The case that proves the point — Daniel, pure reviewer
+### 5. The case that proves the point — a pure reviewer
+
+> **†** Daniel Lam left the company (last authored merge 2025-12-03) and has no portal account, so he never appears in the live dashboard. His GitHub data is retained here only because it is the org's one real example of the pure-reviewer archetype; the behavioural claim generalizes to any future hire in that role.
 
 Zero authored PRs in either window. 25 co-implementer assists across **46,531 effective lines** in 90 days.
 
 - **v2: 8/100.** Three terms are zero by construction; only the 20% collaboration slice can pay, and even saturated it caps him at 20.
 - **v3: 28/100** over 90 days, **51/100** in the June window, **77/100** against the own-history anchor.
 
-This is the exact scenario in Ryan's brief — "reviewing should be worth 100 points if your full-time job is reviewing" — and it is the single largest behavioural change in v3. Daniel is not at 100 because his review volume is 1.93 VP/week, 55% of the benchmark; a reviewer at Karl's volume *does* reach 100 with zero authored PRs.
+This is the exact scenario in Ryan's brief — "reviewing should be worth 100 points if your full-time job is reviewing" — and it is the single largest behavioural change in v3. This reviewer is not at 100 because the review volume is 1.93 VP/week, 55% of the benchmark; a reviewer at Karl's volume *does* reach 100 with zero authored PRs.
 
 ---
 
@@ -278,11 +280,11 @@ v2 caps one login's assists at a flat 1.0 per PR. In v3 that cap is **structural
 | Person | Mapped login | Unmapped alias | Credit stranded on the alias (90 days) |
 |---|---|---|---|
 | Ryan | `rmonsurate` | `ryanmonsurate` | 9 co-implementer assists, **7.45 VP** |
-| Daniel | `daniel-lam-farpoint` | `Daniel-c137`, `Lamd11` | **all 25 assists, 24.79 VP — his entire score** |
+| Daniel Lam † | `daniel-lam-farpoint` | `Daniel-c137`, `Lamd11` | all 25 assists, 24.79 VP (moot — departed, no portal account) |
 | Ramtin | `RamtinSirjani` | `rsirjani` | 8 assists, 8.62 VP |
 | Niki | `nikimahmoudifp` | `nikitamahmoudi` | 12 assists |
 
-Daniel is the severe case: the mapped account authored nothing in the window and the alias holds every assist, so the live product scores him **0**, not 8 and not 28. This affects v2 today and must be fixed regardless of whether v3 ships. Fix is a `GithubLoginMapping` change (allow N logins per user) — noted in *Files to Modify*, sequenced first.
+Daniel Lam would have been the severe case (mapped account authored nothing, alias holds every assist → live score 0), but he has departed and has no portal account, so **no current member's score is zeroed by this today** — the remaining split identities strand modest assist credit (Ryan 7.45 VP; Ramtin and Niki matter for whichever team maps them). The fix is still a `GithubLoginMapping` change (allow N logins per user) — noted in *Files to Modify* — but it is a correctness improvement to ship with v3, no longer an urgent standalone bug.
 
 Separately, `mohsen-fp`, `samit-farpoint`, `RamtinSirjani`, `d-prabjot02` and `nikimahmoudifp` are real authors with **no mapping at all** and never appear in the member view.
 
@@ -364,7 +366,7 @@ Tests first, all fixture-driven — `size-credit.ts` and `value-points.ts` are p
 | 1 | **Split-farming is materially cheaper than under v2** — ~13 extra merge events buys 10 points. | Proven unavoidable given churn deflation (§ trade-off). Bounded by the ramp optimum at 4.79 VP per PR shredded, and made visible by `prShreddingRule`. If Ryan judges the residual too high, the dial is `BASE`: lowering it from 0.70 toward 0.40 restores split resistance and re-inflates churn, monotonically. |
 | 2 | **Review-farming is the cheapest attack in the model** (6.9 reviews for 10 points) and did not exist in v2. | Concentration cap + pool cap + volume alert, all enforceable today. The real fix — requiring the PR to change after the changes-request — needs an ingest field and is honestly deferred to v3.1. |
 | 3 | **Mena's score falls 45 → 36 and Ramtin's 39 → 26.** Large-PR authors lose under churn deflation. | This is the philosophy, not a defect, but it is a person-level number that moves down. Tell them before the dashboard does, and be ready to defend "18 very large PRs is less accepted-unit throughput than 40 median ones". |
-| 4 | **Duplicate identities strand credit today** — Daniel scores 0 in the live product. | Sequenced first, independent of v3, in `GithubLoginMapping`. Do not ship v3 on top of it; the composition story is unreadable when a reviewer's assists land on an unmapped alias. |
+| 4 | **Duplicate identities strand credit** — split accounts (Ryan, Ramtin, Niki) drop assist credit on unmapped aliases. | Multi-login support in `GithubLoginMapping`, shipped with v3; the composition story is unreadable when a reviewer's assists land on an unmapped alias. (The formerly-severe case, Daniel Lam, departed — no live score is zeroed today.) |
 | 5 | **Three of nine members saturate at 100**; the index does not rank the top of this org. | Display the raw value rate next to the index. Raising the saturation multiple makes it worse for the middle — measured, in *Data findings* #4. |
 | 6 | **The premium scalar is aspirational.** `changes_requested` occurs on 4 of 1,267 PRs. | Stated plainly rather than hidden. If Ryan wants review visible *now*, the levers that actually move are `co_implementer` and `non_author_merge`. |
 | 7 | **Losing the four-term decomposition loses explanatory power.** Jaspan & Sadowski's objection to composites — "it will not be clear why one scores 24 and another 37" — was answered in v2 by the four-term table. | The value-sources breakdown is a *better* answer, not a worse one: "your 153 points are 72 from 76 authored PRs, 49 from 51 co-implementations, 29 from 73 merges" is more legible than four normalised ratios. But it must ship on every payload, not be reconstructed by the UI. |
@@ -399,4 +401,4 @@ The v2 analysis stands; v3 changes it in three places.
 ## Also worth a decision, though not blocking
 
 - **Mena's 45 → 36 and Ramtin's 39 → 26** are the price of churn deflation. Both are correct under the stated philosophy. Worth a conversation before the dashboard has it for you.
-- **The `GithubLoginMapping` one-login limit is a live bug** that zeroes out Daniel's entire score today. It should ship first, on its own, whether or not v3 is approved.
+- **The `GithubLoginMapping` one-login limit** strands assist credit on unmapped aliases (Ryan, Ramtin, Niki). With Daniel Lam departed no current score is zeroed by it, so it no longer needs to ship first — bundle multi-login support with v3.

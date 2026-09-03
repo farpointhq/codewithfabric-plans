@@ -1,0 +1,52 @@
+stateDiagram-v2
+    direction TB
+
+    [*] --> Poster
+
+    Poster: Poster shown
+    Poster: preload="none" · nothing streamed
+
+    state reduced_check <<choice>>
+    Poster --> reduced_check : mounted
+    reduced_check --> Static : prefers-reduced-motion = reduce
+    reduced_check --> Observing : motion allowed
+
+    Static: Poster only — permanent
+    Static: never streams, never animates
+
+    Observing: Waiting on IntersectionObserver
+    Observing: still nothing streamed
+
+    Observing --> Loading : scrolled into view
+    Loading: fetch webm → mp4 fallback
+
+    state play_result <<choice>>
+    Loading --> play_result : play() called
+    play_result --> Playing : resolved
+    play_result --> Blocked : rejected
+
+    Playing: Silent loop
+    Playing: burned-in subtitles carry the narration
+
+    Blocked: Autoplay refused
+    Blocked: iOS Low Power Mode — poster stays visible
+
+    Playing --> Paused : scrolled out of view
+    Paused --> Playing : scrolled back in
+
+    Playing --> [*] : unmount — observer disconnected
+    Paused --> [*] : unmount — observer disconnected
+    Static --> [*] : unmount
+    Blocked --> [*] : unmount
+
+    note right of Blocked
+        Treated as a supported state,
+        not an error path.
+        The poster is the real fallback.
+    end note
+
+    note right of Observing
+        Guard: no IntersectionObserver
+        (jsdom, old Safari) degrades
+        to Static rather than throwing.
+    end note

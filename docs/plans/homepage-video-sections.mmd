@@ -1,0 +1,38 @@
+flowchart LR
+    subgraph BEFORE["EN Homepage — before"]
+        direction TB
+        B1["Hero"]
+        B2["FeatureModes<br/><i>no visual</i>"]
+        B3["PrivacyInAction"]
+        B4["MeetTheFuture<br/><i>Performance · Security · Control</i><br/><b>← removed</b>"]
+        B5["Multimodal<br/><i>static slate-mk2.svg</i>"]
+        B6["Testimonials"]
+        B7["Performance"]
+        B8["HumanFirst<br/><i>static explainability-card.png</i>"]
+        B9["Pricing · Roadmap · FAQ"]
+        B1 --> B2 --> B3 --> B4 --> B5 --> B6 --> B7 --> B8 --> B9
+    end
+
+    subgraph AFTER["EN Homepage — after"]
+        direction TB
+        A1["Hero<br/><i>unchanged</i>"]
+        A2["FeatureModes<br/><b>+ sub-agents</b>"]
+        A3["PrivacyInAction<br/><i>unchanged</i>"]
+        A5["Multimodal<br/><b>onboarding + document-attachments</b>"]
+        A6["Testimonials"]
+        A7["Performance"]
+        A8["HumanFirst<br/><b>code-review</b>"]
+        A9["Pricing · Roadmap · FAQ"]
+        A1 --> A2 --> A3 --> A5 --> A6 --> A7 --> A8 --> A9
+    end
+
+    B1 ~~~ A1
+
+    classDef gone fill:#4a1010,stroke:#c55,color:#fff
+    classDef added fill:#0f3d2e,stroke:#3c9,color:#fff
+    classDef plain fill:#1a1a1a,stroke:#555,color:#ccc
+    class B4 gone
+    class A2,A5,A8 added
+    class B1,B2,B3,B5,B6,B7,B8,B9,A1,A3,A6,A7,A9 plain
+    style BEFORE fill:#0d0d0d,stroke:#444,color:#eee
+    style AFTER fill:#0d0d0d,stroke:#444,color:#eee

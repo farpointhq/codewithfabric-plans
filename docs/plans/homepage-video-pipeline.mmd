@@ -1,0 +1,42 @@
+flowchart TB
+    SRC["<b>Fabric-docs @ alternative</b><br/>docs/assets/videos/<br/><br/>sub-agents · 35.5s · 720p60<br/>code-review · 42.3s · 720p60<br/>onboarding · 150s · 1280×800 @15<br/>document-attachments · 51.5s · 720p60"]
+
+    subgraph PREP["Encode pipeline"]
+        direction TB
+        P0["<b>scripts/prepare-marketing-videos.sh</b><br/><i>offline · one-off · not in CI</i>"]
+        P1["git show :: extract"]
+        P0 --> P1
+        P2["trim to window<br/><i>skips the white splash</i>"]
+        P3["strip audio (-an)"]
+        P4["H.264 main · yuv420p<br/>+faststart"]
+        P5["VP9 / WebM sibling"]
+        P6["poster frame → WebP"]
+        P1 --> P2 --> P3
+        P3 --> P4
+        P3 --> P5
+        P2 --> P6
+    end
+
+    BLOB["<b>Vercel Blob</b><br/>*.mp4 · *.webm · *.webp"]
+    MAN["<b>src/content/marketing-videos.ts</b><br/><i>manifest — single source of truth</i>"]
+    IV["<b>&lt;InlineVideo&gt;</b><br/><i>muted · loop · playsInline · preload=none</i>"]
+    UI["FeatureModes · Multimodal · HumanFirst"]
+
+    SRC --> P0
+    P4 --> BLOB
+    P5 --> BLOB
+    P6 --> BLOB
+    BLOB -- "public CDN URLs" --> MAN
+    MAN --> IV --> UI
+
+    classDef src fill:#1a1a1a,stroke:#666,color:#ddd
+    classDef prep fill:#16213e,stroke:#4a6,color:#ddd
+    classDef host fill:#0f2d3d,stroke:#39a,color:#fff
+    classDef man fill:#0f3d2e,stroke:#3c9,color:#fff
+    classDef comp fill:#3d2d0f,stroke:#b93,color:#fff
+    class SRC src
+    class P0,P1,P2,P3,P4,P5,P6 prep
+    class BLOB host
+    class MAN man
+    class IV,UI comp
+    style PREP fill:#0d0d0d,stroke:#444,color:#eee

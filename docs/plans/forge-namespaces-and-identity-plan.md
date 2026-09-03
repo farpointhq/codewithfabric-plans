@@ -1,7 +1,7 @@
 # Reporting: forge coverage and contributor identity
 
-**Status:** proposed, 2026-09-02
-**Repo:** `farpointhq/codewithfabric` · all line numbers against `origin/main` (`16095a3`)
+**Status:** A shipped (in review) · B in flight · D approved as next, 2026-09-02
+**Repo:** `farpointhq/codewithfabric` · all line numbers verified against `origin/main` (`75e1b04`)
 **Related:** [Engineering Impact Index v3](impact-score-v3-plan.md) — this plan supplies the inputs v3 scores; it does not change the scoring model.
 
 ## Summary
@@ -52,15 +52,35 @@ One structural fact shapes everything below: **SimpleRent and Multiplai are both
 companies, and all their people sit under one enterprise team.** So the answer to
 multi-company coverage is more namespaces per team, never more teams.
 
+## Status
+
+- **A — shipped, in review.** [PR #374](https://github.com/farpointhq/codewithfabric/pull/374):
+  `/diffstat` fetched per merged PR, `authorDisplayName` persisted, Impact fence
+  moved from `provider = 'github'` to `churnAvailable`, plus a churn backfill
+  script. 3079 tests green.
+- **B — in flight, separate session.** `ForgeLoginMapping` with a `provider`
+  column (chosen over a parallel `BitbucketLoginMapping`), the eight mapping call
+  sites, the two-forge mappings panel, leaderboard wiring, and a display-name
+  backfill. A per-forge registry (`src/lib/reporting/forges.ts`) replaces the
+  hardcoded `GITHUB_LOGIN_RE`.
+- **C — operational, in progress.** A correctly-scoped GitHub token for Matt's
+  team. C2 (no Bitbucket credential UI) is subsumed by workstream D below.
+- **D — promoted to next.** Was conditional; now the point. See below.
+
 ## Approach
 
-Four workstreams. A and B are the substance; C is largely operational; D is conditional on
-information we do not yet have.
+Four workstreams. A and B are the substance, C is largely operational, and D is
+the general model the other three kept gesturing at — promoted from conditional
+once it became clear the same parallel-twin shape was showing up in three places
+at once.
 
 ### A. Bitbucket into Impact
 
-The fence at `src/app/api/reporting/impact/route.ts:92` — `IMPACT_SCORABLE = { provider:
-"github" }` — is **correct as written today** and must not simply be deleted. The schema
+*Shipped in [PR #374](https://github.com/farpointhq/codewithfabric/pull/374);
+kept here because the reasoning is the load-bearing part.*
+
+The fence at `src/app/api/reporting/impact/route.ts` — `IMPACT_SCORABLE = { provider:
+"github" }` — was **correct as written** and must not simply be deleted. The schema
 comment at `prisma/schema.prisma:707-715` explains why: Bitbucket rows have zero churn, so
 an unfenced Impact query would score thirteen named engineers at zero. That is not a
 missing number, it is a wrong one, about a person.
@@ -91,10 +111,11 @@ UX is bad enough that admins give up.
 
 - **B1.** Generalise `GithubLoginMapping` → `ForgeLoginMapping` by adding a `provider`
   column, unique on `(teamId, userId, provider)`. Existing rows migrate as
-  `provider = 'github'`. One code path for both forges; six read sites move over
-  (`route.ts:44`, `impact/route.ts:214`, `productivity/route.ts:143`,
-  `projects/[projectId]/route.ts:303`, `reporting/route.ts:93`,
-  `users/[userId]/route.ts:142`).
+  `provider = 'github'`. One code path for both forges; **eight call sites across
+  six files** move over (`mappings/route.ts` ×3 — findMany, upsert, deleteMany —
+  plus `impact/route.ts`, `productivity/route.ts`,
+  `projects/[projectId]/route.ts`, `reporting/route.ts`,
+  `users/[userId]/route.ts`).
 - **B2.** Persist `authorDisplayName`. For Bitbucket this is nearly free: the REST client
   **already requests** `author.display_name` and `author.nickname`
   (`bitbucket-pr-rest.ts:361`) and discards them at line 469, keeping only `account_id`.
@@ -134,25 +155,69 @@ unknowns become a few minutes of confirming rather than a scavenger hunt.
   cause of the 7-repo view. An App also survives the holder leaving and lets the customer
   revoke it themselves. Follow-on, not a blocker.
 
-### D. Multiple namespaces per team — conditional
+### D. One namespace model, replacing the per-forge columns
 
-`resolveTeamPrScopes` (`team-token.ts:160-173`) is already multi-forge aware and returns a
-`TeamPrScope[]`. The single-namespace assumption lives in three places:
-`resolveTeamOwnGithubOrg` (`:115`), `resolveTeamGithubOrg` (`:191`) and `ingestAllTeams`'s
-selection `where: { githubOrgLogin: { not: null } }` (`impact-ingest.ts:653`).
+**Promoted from conditional to the next piece of work, 2026-09-02, on Ryan's
+standing preference: the more general and elegant solution wins.** The earlier
+draft deferred this because `naturecrm` turned out to be inside the org we
+already walk, so nothing was *blocked* on it. That reasoning was too narrow.
 
-![Target data model](./forge-scope-target.png)
+`Team` currently carries **nine columns to describe two forges**:
 
-The shape, should we need it, is a `TeamForgeNamespace` child table — `(teamId, provider,
-namespace, token, visibleRepos, verifiedAt)` — replacing the four-column pair on `Team`, so
-one enterprise team can span any number of orgs and workspaces.
+| GitHub | Bitbucket |
+|---|---|
+| `githubOrgLogin` (`schema.prisma:230`) | `bitbucketWorkspace` (`:247`) |
+| `githubReportingToken` (`:216`) | `bitbucketTokenEncrypted` (`:258`) |
+| — | `bitbucketTokenEmail` (`:259`) |
+| `githubReportingVisibleRepos` (`:237`) | `bitbucketVisibleRepos` (`:264`) |
+| `githubReportingVerifiedAt` (`:238`) | `bitbucketVerifiedAt` (`:265`) |
 
-**This is deliberately last and deliberately conditional.** `naturecrm` turned out to be
-inside `Multiplai-Tech-v2`, the org we already walk. It is not yet established that a
-second GitHub org exists at all — the SimpleRent reconciliation may have been an audit of
-Multiplai-Tech-v2's member list against SimpleRent's staff directory. **If there is exactly
-one GitHub org, workstream D is unnecessary and should not be built.** Confirm before
-committing to it.
+That is the same parallel-twin shape Ryan rejected for the mapping table, spread
+across columns instead of tables. A third forge adds five more; a second GitHub
+org adds none, because there is nowhere to put it.
+
+**`TeamForgeNamespace { teamId, provider, namespace, tokenEncrypted, tokenEmail,
+visibleRepos, verifiedAt }`** collapses all nine into one child table, and in
+doing so fixes three separate problems this plan otherwise treats as unrelated:
+
+1. **The one-org-per-team limit.** A team gets exactly one GitHub org today, so
+   SimpleRent's repositories are unreachable no matter how good the token is.
+   This is the original bug that started the investigation.
+2. **The missing Bitbucket credential UI (C2).** With one namespace model there
+   is one generic "connect a namespace" form instead of two per-forge ones, and
+   the Bitbucket half stops being an editable-only-in-psql secret.
+3. **The org-repoint cursor reset.** Changing `githubOrgLogin` today resets the
+   ingest cursor in a transaction (`team-token/route.ts`). With namespaces as
+   rows, repointing is *adding a row and removing another*, and each namespace
+   carries its own cursor — no cross-namespace reset, and no window where a
+   team's history claims coverage it does not have.
+
+**Migration shape.** Additive: create the table, backfill one row per non-null
+`githubOrgLogin` and one per non-null `bitbucketWorkspace`, leave the old columns
+in place and unread for one deploy, then drop them in a follow-up. The columns
+hold live credentials for real customers, so a single-step cutover is the wrong
+risk to take for a refactor.
+
+**Call sites.** `resolveTeamPrScopes` (`team-token.ts:160`) already returns a
+provider-qualified list and is already the right shape — it becomes a straight
+read of the child table. The single-namespace assumption lives in three places
+that must widen:
+
+- `resolveTeamOwnGithubOrg` (`team-token.ts:115`) — the read-path fence
+- `resolveTeamGithubOrg` (`team-token.ts:191`) — the ingest-path resolver
+- `ingestAllTeams`, `where: { githubOrgLogin: { not: null } }`
+  (`impact-ingest.ts:653`), and its Bitbucket twin
+  `where: { bitbucketWorkspace: { not: null }, bitbucketTokenEncrypted: { not: null } }`
+  (`bitbucket-ingest.ts:367`) — both become "every namespace with a credential",
+  and the two orchestrators converge on one queue.
+
+**Preserve the read/ingest split.** `resolveTeamOwnGithubOrg` and
+`resolveTeamGithubOrg` look like duplication and are not: the ingest path permits
+an environment fallback and the read path must never, because a fallback on a
+read path serves one tenant's data under another's credential. Generalising must
+keep those as two functions. Collapsing them into one with a boolean flag would
+put a tenant-isolation guarantee behind a parameter, which is the kind of
+elegance that causes incidents.
 
 ## Files to modify
 
@@ -269,15 +334,22 @@ put a tenant-isolation guarantee behind a parameter.
 Diffstat must be fetched *through* that abstraction, not by reaching for the Bitbucket
 client directly from the ingest.
 
-**Where SOLID would over-engineer.** `TeamForgeNamespace` (D) is the textbook-correct model
-and would be premature if there is only one GitHub org. Keeping the columns on `Team` is
-the right call until a second namespace is demonstrated. Noted as conditional above for
-exactly this reason.
+**Where SOLID would over-engineer — revised.** The first pass argued
+`TeamForgeNamespace` (D) would be premature with only one GitHub org, and that
+keeping the columns on `Team` was right until a second namespace was
+demonstrated. That has been overruled, correctly. The argument mistook "nothing
+is blocked today" for "the model is adequate": nine columns already describe two
+forges, the Bitbucket half of them has no UI *because* there was no general model
+to build one against, and a second namespace cannot be demonstrated by a schema
+that cannot represent one. Deferring it also leaves the original SimpleRent bug
+permanently unfixable.
 
 ## Open questions
 
-1. **Is there a second GitHub org?** Decides whether workstream D is built or dropped.
-   Blocking for D, irrelevant to A–C.
+1. **Is there a second GitHub org?** No longer decides whether D is built — D is
+   now the model regardless. It decides only how urgent the *backfill* of a
+   second namespace is, and whether SimpleRent's repositories are reachable this
+   week or next.
 2. **Does Owen open pull requests at all?** Independent of every fix here. Commits are not
    counted — only merged PRs and closed issues. If his workflow is direct pushes, he reads
    as zero after all of this, for a different reason. Worth knowing before anyone is told

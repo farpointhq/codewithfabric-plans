@@ -56,6 +56,39 @@ Transport {
 
 `SessionInfo`, `SessionEvent`, `PermissionRequestPayload` are **vendored verbatim** from `Fabric/src/shared/protocol` — zod-only, no Electron, already proven portable into the relay and the RN app. Publish `@fabric/protocol` from the Fabric repo (or vendor with a sync script and a drift test) so the two repos cannot silently diverge.
 
+### UI mockups
+
+These are static mockups, not a running client: every colour, radius, spacing step and font below is copied from the desktop app's own theme tokens in `Fabric/src/renderer/Components/Theme/*.ts`, and the component shapes from `ChatInputStyles`, `UnifiedThinking/*`, `PermissionShell` and `SidePanelColumn`.
+The Tailwind rebuild described in **The UI** targets this look — treat the seven images as the visual acceptance criteria for that table.
+
+![First paint at /chat](./mock-01-landing-empty.png)
+
+*Hosted — first paint after login: Fabric's empty-chat greeting and suggestion tiles, composer focused, model picker on **Fabric Large**, mode chip on **Confirm writes**.*
+
+![Hosted conversation mid-stream](./mock-02-hosted-conversation.png)
+
+*Hosted — a turn mid-stream: blue user bubble, a collapsed `web_search` tool card, rendered markdown with a VSC dark-plus code block, the word-reveal caret, and Stop in the composer.*
+
+![Permission-mode popover](./mock-03-permission-mode-popover.png)
+
+*Hosted — the composer's permission-mode popover open, showing all five modes in `PERMISSION_MODE_ORDER` with their desktop labels and descriptions, the active one in accent, and the Shift+Tab hint.*
+
+![Computers](./mock-04-computers.png)
+
+*Remote — the Computers view built from `GET /api/devices`: one live desktop with a Connect affordance, one offline and dimmed.*
+
+![Repo picker](./mock-05-repo-picker.png)
+
+*Remote — after Connect: the desktop's recent projects from `session-list`, each with its existing chat count, over the Computers view.*
+
+![Remote permission request](./mock-06-remote-permission-request.png)
+
+*Remote — a chat running on Ryan's MacBook Pro in `~/Projects/codewithfabric`; the desktop's `permission-request` for a file edit surfaces in the browser as Fabric's own permission dialog.*
+
+![Mobile](./mock-07-mobile.png)
+
+*Hosted at 375×812 — the rail and sessions sidebar collapse behind the hamburger, the thread stays full-width, and the composer stays pinned to the bottom.*
+
 ### Hosted transport — what stays on which side
 
 The iOS app puts the raw `sk-fabric-*` key on the device. **The browser must not.** `/api/keys/reveal` was retired on 2026-08-26 for exactly that risk, and a key in `localStorage` is an XSS away from theft. So:

@@ -1,0 +1,31 @@
+sequenceDiagram
+  autonumber
+  participant B as Browser
+  participant N as Next.js (/api/devices)
+  participant R as Relay
+  participant D as Fabric desktop
+  B->>N: POST /api/devices/register {type: browser}
+  N-->>B: {deviceId, token} (held in memory only)
+  B->>N: GET /api/devices
+  N-->>B: computers with live flag
+  B->>R: relay-client-hello {token, targetDeviceId}
+  R->>N: POST /api/devices/validate
+  N-->>R: {userId}
+  R-->>B: relay-hello-ok
+  B->>R: session-list
+  R->>D: session-list
+  D-->>B: session-list-result (recent repos + chats)
+  B->>R: session-create {projectPath}
+  R->>D: session-create
+  D-->>B: session-create-result {SessionInfo}
+  B->>D: attach {chatId}
+  D-->>B: attach-snapshot
+  B->>D: prompt {prompt, permissionMode}
+  loop agent turn
+    D-->>B: session-event delta / tool-call / tool-result
+    opt tool needs approval
+      D-->>B: session-event permission-request
+      B->>D: permission-response {approved}
+    end
+  end
+  D-->>B: session-event turn-end

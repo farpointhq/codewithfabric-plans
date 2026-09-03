@@ -1,0 +1,26 @@
+sequenceDiagram
+  autonumber
+  participant U as User
+  participant B as Browser (HostedTransport)
+  participant C as /api/v1/chat
+  participant L as LiteLLM proxy
+  participant S as /api/v1/search
+  participant P as /api/chat/sessions
+  U->>B: prompt
+  B->>P: append user message
+  loop tool loop (≤ 40 rounds)
+    B->>C: POST {model, messages, tools:[web_search]}
+    C->>C: session → decrypt sk-fabric key
+    C->>L: chat/completions (stream)
+    L-->>C: SSE
+    C-->>B: SSE (key never leaves server)
+    alt assistant returns tool_call web_search
+      B->>B: permission matrix (read-only → allow)
+      B->>S: POST /api/v1/search {query}
+      S-->>B: results
+      B->>B: emit tool-call / tool-result SessionEvents
+    else assistant returns text
+      B->>B: emit delta SessionEvents (word-paced reveal)
+    end
+  end
+  B->>P: append assistant message

@@ -1,0 +1,25 @@
+flowchart LR
+  subgraph Browser["Browser — codewithfabric.com/chat"]
+    UI["Chat UI<br/>(renders SessionEvent)"]
+    HT["HostedTransport<br/>client tool loop"]
+    RT["RemoteTransport<br/>relay client"]
+    UI --- HT
+    UI --- RT
+  end
+  subgraph Vercel["Next.js on Vercel"]
+    CHAT["/api/v1/chat<br/>session → key → stream"]
+    SEARCH["/api/v1/search<br/>Brave (auth via #366)"]
+    SESS["/api/chat/sessions<br/>persistence"]
+    DEV["/api/devices<br/>registry + presence"]
+  end
+  LLM["LiteLLM proxy<br/>api.codewithfabric.com"]
+  DB[("Neon<br/>fabric_portal")]
+  RELAY["Relay<br/>wss://relay.codewithfabric.com"]
+  DESK["Fabric desktop<br/>(user's computer)<br/>agent loop + permissions"]
+  HT --> CHAT --> LLM
+  HT --> SEARCH
+  HT --> SESS --> DB
+  RT --> DEV --> DB
+  RT <-->|"relay-client-hello<br/>session-create / attach / prompt<br/>session-event / permission-*"| RELAY
+  DESK <-->|"relay-hello<br/>relay-presence"| RELAY
+  RELAY -->|"validate / heartbeat"| DEV

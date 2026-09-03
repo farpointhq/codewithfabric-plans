@@ -1,0 +1,11 @@
+flowchart TB
+  subgraph P0["Phase 0 — fix #3803 presence (gates every remote client, iOS too)"]
+    A1["Sync relay-mux.ts<br/>(relay-presence op)"] --> A2["Relay: lastSeen by deviceId<br/>+ heartbeat callback"] --> A3["Registry: live from lastSeenAt<br/>+ ghost-row prune"] --> A4["Desktop emits relay-presence"]
+  end
+  subgraph P1["Phase 1 — hosted chat + landing"]
+    B0["#366 search auth"] --> B1["Harden /api/v1/chat<br/>rate limit · maxDuration · tools"] --> B2["ChatSession / ChatMessage models<br/>(drift check first)"] --> B3["Tailwind chat surface<br/>+ Inter font fix"] --> B4["Logged-in / → /chat"]
+  end
+  subgraph P2["Phase 2 — remote desktop"]
+    C1["Vendor @fabric/protocol<br/>+ drift test"] --> C2["BROWSER device type"] --> C3["Port mobile/src/net → browser"] --> C4["Computers → repos → new chat<br/>+ permission dialogs"]
+  end
+  P0 --> P1 --> P2

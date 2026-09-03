@@ -1,0 +1,43 @@
+erDiagram
+  Team ||--o{ TeamForgeNamespace : "owns many"
+  Team ||--o{ ForgeLoginMapping : "scopes"
+  User ||--o{ ForgeLoginMapping : "is"
+  TeamForgeNamespace ||--o{ PrImpactRecord : "fences reads"
+
+  Team {
+    string id PK
+    string name
+    bool   individualReportingDisabled
+  }
+
+  TeamForgeNamespace {
+    string  id PK
+    string  teamId FK
+    string  provider  "github | bitbucket"
+    string  namespace "org login or workspace slug"
+    string  tokenEncrypted "nullable - falls back to env"
+    string  tokenEmail     "bitbucket basic auth only"
+    int     visibleRepos   "recorded at verify"
+    datetime verifiedAt
+  }
+
+  ForgeLoginMapping {
+    string id PK
+    string teamId FK
+    string userId FK
+    string provider "github | bitbucket"
+    string login    "gh login or atlassian account_id"
+  }
+
+  PrImpactRecord {
+    string  githubPrId PK
+    string  provider
+    string  orgLogin
+    string  repoFullName
+    string  authorLogin
+    string  authorDisplayName "NEW - drives the claim UI"
+    int     rawAdditions      "populated for bitbucket via diffstat"
+    int     effectiveChurn
+    bool    churnAvailable    "NEW - replaces the provider fence"
+    datetime mergedAt
+  }

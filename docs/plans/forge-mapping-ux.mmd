@@ -1,0 +1,38 @@
+flowchart TD
+  START(["Admin opens Reporting → Contributors"])
+
+  subgraph OLD["Today — blind entry"]
+    O1["List every team member"]
+    O2["Type a GitHub username<br/>into an empty box, from memory"]
+    O3["26 of 50 left blank<br/>because nobody knows them"]
+    O1 --> O2 --> O3
+  end
+
+  subgraph NEW["Proposed — claim what we already saw"]
+    N1["Read distinct authorLogin from<br/>PrImpactRecord in this team's namespaces"]
+    N2["Subtract logins already mapped"]
+    N3["Unclaimed contributors, ranked by PR count<br/>shows displayName · PRs · latest repo"]
+    N4{"Fuzzy match<br/>displayName vs<br/>member name / email"}
+    N5["Pre-selected suggestion<br/>admin confirms with one click"]
+    N6["Dropdown of unmapped members"]
+    N7["Bulk paste: email,login CSV"]
+    N8[("ForgeLoginMapping<br/>teamId · userId · provider · login")]
+    N1 --> N2 --> N3 --> N4
+    N4 -->|"strong"| N5
+    N4 -->|"weak / none"| N6
+    N5 --> N8
+    N6 --> N8
+    N7 --> N8
+  end
+
+  START --> NEW
+  N8 --> BADGE["Dashboard badge:<br/>N contributors unmapped · M PRs unattributed"]
+
+  classDef bad fill:#5c1f1f,stroke:#a33,color:#ffe8e8
+  classDef ok fill:#1b4d3e,stroke:#2e8b6f,color:#e8f5f0
+  classDef neutral fill:#2b2f3a,stroke:#586080,color:#e6e8f0
+  class O2,O3 bad
+  class N3,N5,N8,BADGE ok
+  class N1,N2,N4,N6,N7,START neutral
+  style OLD fill:#22252e,stroke:#586080,color:#e6e8f0
+  style NEW fill:#22252e,stroke:#586080,color:#e6e8f0

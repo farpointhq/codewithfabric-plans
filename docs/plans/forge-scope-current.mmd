@@ -1,0 +1,40 @@
+flowchart TB
+  subgraph TEAM["Matt Kesby's Team — one row, two forge slots"]
+    G["githubOrgLogin = Multiplai-Tech-v2<br/>githubReportingToken = NULL"]
+    B["bitbucketWorkspace = go-va_dev<br/>bitbucketTokenEncrypted = set"]
+  end
+
+  ENV[("GITHUB_REPORTING_TOKEN<br/>Farpoint env var<br/>sees 7 repos, verified Aug 5")]
+  G -.->|"falls back to"| ENV
+
+  subgraph GH["GitHub — Multiplai-Tech-v2"]
+    R1["ai-command-room<br/>101 PRs ingested"]
+    R2["naturecrm<br/>Owen · 0 PRs seen"]
+    R3["repos of the 9 SimpleRent devs<br/>0 PRs seen"]
+  end
+
+  subgraph BB["Bitbucket — go-va_dev"]
+    R4["6 repos · 378 PRs<br/>13 authors · current today"]
+  end
+
+  ENV -->|"can see"| R1
+  ENV -.->|"CANNOT see"| R2
+  ENV -.->|"CANNOT see"| R3
+  B -->|"ingests fine"| R4
+
+  R1 --> IMPACT["Impact Score"]
+  R2 -.-> BLOCK1["Owen scores zero"]
+  R3 -.-> BLOCK2["9 devs score zero"]
+  R4 -.->|"provider = 'github' fence<br/>churn is 0 on every row"| BLOCK3["13 devs score zero"]
+
+  classDef ok fill:#1b4d3e,stroke:#2e8b6f,color:#e8f5f0
+  classDef bad fill:#5c1f1f,stroke:#a33,color:#ffe8e8
+  classDef warn fill:#5a4520,stroke:#b8862b,color:#fff4e0
+  classDef neutral fill:#2b2f3a,stroke:#586080,color:#e6e8f0
+  class R1,R4,IMPACT ok
+  class BLOCK1,BLOCK2,BLOCK3,R2,R3 bad
+  class ENV warn
+  class G,B,TEAM neutral
+  style GH fill:#22252e,stroke:#586080,color:#e6e8f0
+  style BB fill:#22252e,stroke:#586080,color:#e6e8f0
+  style TEAM fill:#22252e,stroke:#586080,color:#e6e8f0

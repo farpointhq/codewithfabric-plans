@@ -21,7 +21,8 @@ flowchart LR
         a9["/jp  plans, pricing, download removed<br/>full rewrite in Phase 3"]
         a10["/register  waitlist sign-in"]
         a11["/welcome  booking link"]
-        a12["/dashboard  customers only:<br/>installers, billing, keys"]
+        a12["/dashboard  customers:<br/>billing, keys, link to downloads"]
+        a13["/download  unchanged,<br/>no longer linked from marketing"]
     end
     b1 -->|rewrite| a1
     b6 -->|rewrite| a6
@@ -32,4 +33,4 @@ flowchart LR
     b2 -->|308| a1
     b4 -->|308| a1
     b5 -->|"308 (air-gapped guide to /enterprise)"| a8
-    b3 -->|"308, sign-in required"| a12
+    b3 -->|"unchanged; marketing links removed"| a13

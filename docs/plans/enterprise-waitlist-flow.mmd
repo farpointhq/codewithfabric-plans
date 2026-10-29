@@ -8,7 +8,7 @@ flowchart TD
     G --> H["Credentials sign-in"]
     D --> I["NextAuth events.signIn"]
     H --> I
-    I --> J{"Existing paid<br/>relationship or<br/>enterprise member?"}
+    I --> J{"Paying customer?<br/>Stripe, PayPal, crypto,<br/>iOS IAP buyer or<br/>enterprise member"}
     J -->|"Yes"| K["/dashboard<br/>unchanged customer experience"]
     J -->|"No"| L["enrollOnSignIn()<br/>upsert WaitlistEntry by userId"]
     L --> M{"Atomic claim:<br/>inviteEmailSentAt IS NULL?"}
@@ -20,3 +20,5 @@ flowchart TD
     Q --> N
     O -.-> R["Internal alert to Ryan:<br/>new registrant"]
     N --> S["Google Calendar booking page<br/>30 min with Ryan"]
+    T["iOS app: Sign in with Apple<br/>/api/auth/mobile/apple"] --> U["IAP purchase<br/>/api/apple/transaction<br/>unchanged, never gated"]
+    U -.-> V["Never reaches events.signIn:<br/>no waitlist, no booking email"]

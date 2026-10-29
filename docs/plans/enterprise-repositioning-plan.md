@@ -11,7 +11,8 @@ Reposition codewithfabric.com from a private coding tool for individuals into an
 general-purpose agent system for white-collar work**. The lead message speaks to organizations that
 already pay for an enterprise AI or agent platform: Fabric can likely cut that bill by 50% or more,
 backed by the approved proof point **99.2% accuracy at 80%+ cost reduction**. The site gets a light
-theme, loses every public download link and every individual plan, and gains a single call to action,
+theme, loses the public "Download" buttons and links on marketing pages and every individual plan on the
+website, and gains a single call to action,
 **Register to find out more**. Registration is a sign-in (Google, Apple, GitHub, or email and password).
 The first sign-in of a non-customer adds them to an enterprise waitlist and sends one email inviting
 them to book a 30-minute call with Ryan.
@@ -29,11 +30,12 @@ them to book a 30-minute call with Ryan.
 | Theme | Light. |
 | Domain | Stay on codewithfabric.com. Brand copy avoids leaning on "code". |
 | Personal positioning | Removed entirely (hero, rotating personal prompts, the parent's medical record example). |
-| Downloads | No public download links. Installers only from the signed-in dashboard, for customers. |
-| Individual plans | Not advertised and not purchasable, even when signed in. Existing payers keep renewals, dashboard, keys and billing. |
+| Downloads | Remove the public "Download" buttons and links on marketing pages (EN and JP). The `/download` page, its installer links, installer hosting, the release bucket and the auto-updater stay exactly as they are; signed-in users reach downloads from the dashboard. |
+| Individual plans (website) | Not advertised and not purchasable on the website (EN and JP), even when signed in. Existing payers keep renewals, dashboard, keys and billing. The no-purchase rule applies to **web checkout only**. |
+| iOS in-app purchases | **Stay, for new and existing users alike.** The iOS app keeps its full IAP flow; nothing in this plan blocks or hides anything in the app, and every backend path IAP depends on is listed under "Must not change". IAP buyers are paying individuals: they skip the waitlist and never get the booking email. |
 | Single CTA | "Register to find out more" leads to sign-in, then waitlist plus booking email. Never from an anonymous form. |
 | Video | Farpoint's enterprise video embedded under the hero with a click-to-load youtube-nocookie facade. |
-| /jp | Plans, checkout, sign-up CTAs and downloads come off **in Phase 1**, together with English. The full JP copy rewrite follows in Phase 3 (reviewer: kaoru@farpointhq.com). |
+| /jp | Plans, checkout, sign-up CTAs and download buttons come off **in Phase 1**, together with English. The full JP copy rewrite follows in Phase 3 (reviewer: kaoru@farpointhq.com). |
 | Shipping | Feature branch plus PR with Vercel preview. Never straight to main. |
 
 **Found during research (facts the plan relies on):**
@@ -53,10 +55,10 @@ them to book a 30-minute call with Ryan.
 ## Approach
 
 1. **Phase 1 (copy, theme, removals; EN and JP removals together).** Rewrite the homepage around the
-   savings hook, switch the marketing surface to light tokens, delete the public pricing, compare,
-   coding-guide and download pages behind permanent redirects, strip pricing, plans, checkout,
-   sign-up and download surfaces from both locales, and add a server-side purchase-eligibility guard so
-   no non-paying account can buy anything, from any page or API. The single CTA points at the
+   savings hook, switch the marketing surface to light tokens, delete the public pricing, compare and
+   coding-guide pages behind permanent redirects, strip pricing, plans, checkout, sign-up CTAs and
+   "Download" buttons from both locales, and add a server-side purchase-eligibility guard so no
+   non-paying account can start a **web** checkout. The iOS in-app purchase path is untouched. The single CTA points at the
    existing sign-in page until Phase 2 lands (it already creates an account).
 2. **Phase 2 (waitlist, auth hardening, booking email).** Add `/register`, the `WaitlistEntry` table,
    the sign-in enrollment hook and the one-time booking email. Harden the existing email and password
@@ -79,9 +81,7 @@ them to book a 30-minute call with Ryan.
 | `/enterprise` | "Your Code. Your Models. Your Infrastructure. Always." | **Rewrite** as Deployment and security | 1 | Absorbs the air-gapped guide. |
 | `/pricing` | "AI Coding IDE Plans" | **Delete, 308 to `/`** | 1 | |
 | `/jp/pricing` | 307 to `/pricing` | **308 to `/jp`** | 1 | Explicit rule before the generic `/jp/*` fallback. |
-| `/download` | Public installer page, "No account is needed" | **Delete, 308 to `/dashboard`** | 1 | Middleware already sends signed-out users to `/signin?callbackUrl=/dashboard`. |
-| `/download/[platform]` | Public 302 to installer | **Replace with 308 to `/dashboard`** | 1 | Old links in emails and forums land on sign-in. |
-| `/jp/download` | 307 to `/download` | **308 to `/dashboard`** | 1 | |
+| `/download`, `/download/[platform]`, `/jp/download` | Installer page and installer redirects | **Keep unchanged** | | Only the marketing buttons and links pointing here are removed. The page, its links, `/api/releases`, installer hosting and the auto-updater do not change. |
 | `/compare`, `/compare/cursor`, `/compare/copilot`, `/compare/windsurf` | Coding competitor pages | **Delete, 308 to `/`** | 1 | |
 | `/learn` | Coding guide index | **Delete, 308 to `/`** | 1 | |
 | `/learn/air-gapped-ai-ide` | Air-gapped coding guide | **Delete, 308 to `/enterprise#air-gapped`** | 1 | |
@@ -96,11 +96,11 @@ them to book a 30-minute call with Ryan.
 | `/welcome` | (new) | **New**: "You are registered" with booking button | 2 | Signed-in non-customers only. |
 | `/forgot-password`, `/reset-password`, `/verify-email` | Auth | **Keep** | 2 | Hardening only. |
 | `/beta/welcome` | Legacy beta coupon flow | **308 to `/dashboard`** | 2 | Coupon flow is superseded by the waitlist. |
-| `/dashboard/*` | Customer dashboard | **Keep**, gate purchase and download UI | 1 | See inventories. |
+| `/dashboard/*` | Customer dashboard | **Keep**, gate web purchase UI | 1 | Download card unchanged. See inventories. |
 | `/connect/remix`, `/desktop-auth`, `/account/delete` | Functional | **Keep** | | `/connect/remix/page.tsx:55` links to billing; gated by the same eligibility guard. |
 | `/claw` | Already 308s home | No change | | |
 | `/llms.txt` | Lists Pricing and Download | **Rewrite** | 1 | |
-| `/sitemap.xml`, `/robots.txt` | Lists pricing, download, compare, learn | **Edit** | 1 | Add `/welcome` and `/register` to robots disallow. |
+| `/sitemap.xml`, `/robots.txt` | Lists pricing, download, compare, learn | **Edit** | 1 | Remove pricing, compare and learn; `/download` stays listed. Add `/welcome` and `/register` to robots disallow. |
 | `/og`, `/opengraph-image` | Dark OG image | **Regenerate light** | 1 | |
 
 ## Homepage copy (English, final draft)
@@ -316,42 +316,37 @@ rewrite replaces them with tokens, and an ESLint rule (`no-restricted-syntax` on
 **Assets:** `public/logo-full.svg` and `public/logo.svg` are white-only. Add dark variants
 (`logo-full-dark.svg`, `logo-dark.svg`) and regenerate `og-image.png` and the `/og` route on a light background.
 
-## Download removal inventory
+## Download link removal inventory
 
-Every place a public download link or installer route appears today. All are removed or gated in Phase 1.
+Scope is deliberately narrow: remove the public "Download" buttons and links on marketing pages (EN and
+JP) that send visitors to the downloads page. Nothing else about downloads changes.
+
+**Remove (Phase 1):**
 
 | File:line | What | Action |
 |---|---|---|
-| `src/app/download/page.tsx:1-99` | Public download page ("No account is needed to download") | Delete; `/download` 308 to `/dashboard` |
-| `src/app/download/layout.tsx` | Layout for the page | Delete |
-| `src/app/download/[platform]/route.ts` | Public redirect to installer | Replace body with 308 to `/dashboard` |
-| `src/app/download/[platform]/__tests__/route.test.ts` | Tests for public redirect | Rewrite for the new redirect |
-| `src/lib/download-redirect.ts:24-63` | Platform slugs for the public route | Delete once nothing imports it |
-| `src/components/marketing/navigation.tsx:97-100` | Desktop nav "Download" (EN and JP) | Remove |
-| `src/components/marketing/navigation.tsx:172-176` | Mobile nav "Download" (EN and JP) | Remove |
-| `src/components/marketing/footer.tsx:32` | Footer "Download" (EN and JP) | Remove |
-| `src/components/marketing/jp/enterprise-sections.tsx:235-236` | JP BYOK plan card CTA "ダウンロード" to `/download` | Delete with the JP pricing block |
-| `src/app/learn/getting-started/page.tsx:110-150` | "Step 1: Download Fabric" section and button | Page deleted |
-| `src/app/learn/getting-started/page.tsx:424-432` | "Download Fabric and start coding" CTA | Page deleted |
-| `src/app/learn/page.tsx:56` | "Download for macOS, Windows, or Linux" card | Page deleted |
-| `src/app/sitemap.ts:43` | `/download` in sitemap | Remove |
-| `public/llms.txt:14` | "Download: Get Fabric for macOS, Windows or Linux" | Remove |
-| `src/messages/en.json:9`, `src/messages/jp.json:9` | `nav.download` | Remove key |
-| `src/messages/en.json:215`, `src/messages/jp.json:215` | `footer.download` | Remove key |
-| `src/app/api/releases/route.ts:5` | Public `GET` returning the release manifest with file names | Require a session with download entitlement (its only in-app caller is `download-card.tsx:143`) |
-| `src/components/dashboard/download-card.tsx:297` | Dashboard installer links | **Keep**, but render only when `canDownload` is true (see below) |
-| `src/app/dashboard/page.tsx:153` | `<DownloadCard>` shown to every signed-in user | Gate on `canDownload` |
-| `src/app/dashboard/page.tsx:161-170` | "Subscribe", then "Download & Sign In" steps | Replace for non-customers with the `/welcome` content |
-| Desktop-app emails (`src/lib/enterprise-email-templates.ts`, `src/lib/release-links.ts`) | Installer links in enterprise onboarding emails | **Keep**: sent only to provisioned enterprise users |
+| `src/components/marketing/navigation.tsx:97-100` | Desktop nav "Download" button (EN and JP) | Remove |
+| `src/components/marketing/navigation.tsx:172-176` | Mobile nav "Download" button (EN and JP) | Remove |
+| `src/components/marketing/footer.tsx:32` | Footer "Download" link (EN and JP) | Remove |
+| `src/components/marketing/jp/enterprise-sections.tsx:235-236` | JP BYOK plan card CTA "ダウンロード" to `/download` | Removed with the JP pricing block |
+| `src/app/learn/getting-started/page.tsx:110-150`, `:424-432` | "Download Fabric" section and CTA | Page deleted with the coding guides (308 to `/dashboard`) |
+| `src/app/learn/page.tsx:56` | "Download for macOS, Windows, or Linux" card | Page deleted with the coding guides |
+| `public/llms.txt:14` | "Download" entry in the public link list | Dropped in the llms.txt rewrite |
+| `src/messages/en.json:9`, `src/messages/jp.json:9` | `nav.download` | Remove key once unused |
+| `src/messages/en.json:215`, `src/messages/jp.json:215` | `footer.download` | Remove key once unused |
 
-**Residual exposure (not closed by Phase 1):** installers are still served from the public bucket
-`releases.codewithfabric.com` with a public `releases.json` manifest (`src/lib/release-links.ts:19-23`).
-Anyone with a direct URL can still download. Closing that needs private objects with short-lived signed
-URLs issued by an authenticated route, and the desktop auto-updater currently reads the public manifest.
-That is a separate decision (see Open decisions).
+**Unchanged (do not touch):**
 
-**Outside this repo:** the public docs site (`farpointhq.github.io/Fabric-docs`) and GitHub releases, if
-public, may also link installers. Audit them in Phase 1.
+| File | Why it stays |
+|---|---|
+| `src/app/download/page.tsx`, `src/app/download/layout.tsx` | The downloads page and its installer links stay as they are |
+| `src/app/download/[platform]/route.ts` and its test | Installer redirects keep working for existing links |
+| `src/lib/download-redirect.ts`, `src/lib/release-links.ts`, `src/lib/releases-snapshot.ts` | Installer resolution |
+| `src/app/api/releases/route.ts` | Release manifest for the dashboard |
+| `src/components/dashboard/download-card.tsx`, `src/app/dashboard/page.tsx:153` | Signed-in users reach downloads from the dashboard |
+| `src/app/sitemap.ts:43` | `/download` stays in the sitemap |
+| `releases.codewithfabric.com`, `releases.json`, the desktop auto-updater | Installer hosting, bucket URLs and updates are out of scope |
+| Enterprise onboarding emails (`src/lib/enterprise-email-templates.ts`) | Installer links for provisioned customers |
 
 ## Pricing and checkout removal inventory
 
@@ -401,39 +396,69 @@ public, may also link installers. Audit them in Phase 1.
 | `src/app/api/team/members/[memberId]/subscribe/route.ts:12` | Owner buys a seat for a member | 403 unless the owner `canTopUp` |
 | `src/app/api/stripe/portal/route.ts:6` | Stripe customer portal | **Keep** for anyone with a `stripeCustomerId` (renewals, cards, invoices, cancel) |
 | `src/app/api/stripe/webhooks/route.ts:99` | Renewals and payment events | **Keep unchanged** |
-| `src/app/api/apple/transaction/route.ts:36` | iOS in-app credit packs | See Open decisions |
 | `src/app/dashboard/billing/page.tsx:169-171` | `?subscribe=` auto-starts checkout | Ignore unless `canSubscribe` |
 | `src/app/dashboard/billing/page.tsx:380-436` | "Pay As You Go" top-up buttons | Render only when `canTopUp` |
 | `src/app/dashboard/billing/page.tsx:437-520` | "Monthly Credit Plans" ladder | Render only when `canSubscribe` |
-| `src/app/dashboard/page.tsx:107-110`, `:121`, `:129-131` | "No subscription / Subscribe", "Add Credits" | Hide for non-eligible accounts |
+| `src/app/dashboard/page.tsx:107-110`, `:121`, `:129-131` | "No subscription / Subscribe", "Add Credits" | Hide for non-eligible accounts (web only) |
 | `src/app/dashboard/layout.tsx:89` | "Billing" nav item | Show only to accounts with a billing history |
 | `src/app/connect/remix/page.tsx:55` | Link to `/dashboard/billing?sender=monsurate.com` | Show only when `canTopUp` |
 
-### Existing-customer carve-out (recommended)
+### Must not change: the iOS in-app purchase path
 
-One module, `src/lib/purchase-eligibility.ts`, answers one question for every UI and API path:
+The iOS app keeps its full IAP flow for new and existing users. None of these files, endpoints or
+behaviours change in any phase, and the web purchase-eligibility guard is **never** applied to them.
+
+| File / endpoint | Role in IAP |
+|---|---|
+| `POST /api/apple/transaction` (`src/app/api/apple/transaction/route.ts`) | Receives the StoreKit 2 signed transaction from the app, validates it and grants credits (session-authed, rate limited per user) |
+| `POST /api/apple/notifications` (`src/app/api/apple/notifications/route.ts`) | App Store Server Notifications V2: refunds, refund reversals and other lifecycle events |
+| `src/lib/apple-iap.ts` | SKU catalog and `verifyAppleTransaction` (JWS signature, bundle id and environment checks) |
+| `src/lib/apple-certs/` | Vendored Apple root certificates used by the verifier |
+| `src/lib/apple-iap-grant.ts` | `grantAppleTransaction`, `clawbackAppleTransaction`, `reverseAppleRefund`, app account token resolution |
+| `src/lib/balance.ts` (`grantCreditsInTx`, `provisionLiteLLMAfterGrant`) | Credit grant and key provisioning after a purchase |
+| `src/lib/litellm-sync.ts` (`syncLiteLLMForUser`, the `credit-topup` path) | Lifts the LiteLLM budget so the purchased credits are spendable |
+| `src/lib/reconcile-entitlement.ts`, `src/app/api/user/status/route.ts`, `src/app/api/keys/*` | Entitlement and API key issuance the apps rely on |
+| `POST /api/auth/mobile/apple` (`src/app/api/auth/mobile/apple/route.ts`), `src/lib/apple-mobile.ts`, `src/lib/desktop-auth.ts` (`mintSessionResponse`) | Sign in with Apple for the iOS app and the session the IAP routes authenticate with |
+| `appleTransactionRateLimiter`, `mobileAppleAuthRateLimiter` (`src/lib/rate-limit.ts:160-183`) | When Phase 2 moves rate limits to a shared store, these keep their current limits and keys |
+| `Payment` rows with `provider = APPLE` and the Apple fields on `Payment` in `prisma/schema.prisma` | Purchase records; the waitlist migration is additive only |
+| `APPLE_IAP_*` and Apple sign-in environment variables | Configuration |
+
+The Phase 2 waitlist hook runs in NextAuth `events.signIn` on the web. iOS sign-in goes through
+`/api/auth/mobile/apple`, which mints its own session and never reaches that hook, so the app never
+triggers waitlist enrollment or the booking email. The beta-gate check inside the mobile route
+(`route.ts:43-48`) is left in place; Phase 2 only confirms `NEXT_PUBLIC_BETA_ENABLED` stays off.
+
+**App Store review note found in the code:** `src/lib/apple-iap.ts:203-215` says App Review testers use
+sandbox receipts on a production build, and production mode rejects them as `invalid_environment` by
+design, with a follow-up planned only "if App Review trips on it". Nothing in this plan changes that
+behaviour or affects the app binary, so it adds no new review risk, but the existing note stands.
+
+### Existing-customer carve-out for web checkout (recommended)
+
+One module, `src/lib/purchase-eligibility.ts`, answers one question for every **web** checkout UI and
+API path. It is not called by any iOS or Apple route.
 
 ```ts
 type PurchaseEligibility = {
-  canTopUp: boolean;      // one-time credits
-  canSubscribe: boolean;  // start or change a credit plan
-  canDownload: boolean;   // installers in the dashboard
-  reason: "enterprise" | "paying-customer" | "prior-customer" | "none";
+  canTopUp: boolean;      // web one-time credits
+  canSubscribe: boolean;  // web: start or change a credit plan
+  reason: "enterprise" | "paying-customer" | "iap-customer" | "prior-customer" | "none";
 };
 getPurchaseEligibility(userId): Promise<PurchaseEligibility>
 ```
 
-| Account | `canTopUp` | `canSubscribe` | `canDownload` |
+| Account | `canTopUp` (web) | `canSubscribe` (web) | Waitlist and booking email |
 |---|---|---|---|
-| Enterprise member or owner (`isEnterpriseViewer`) | No (invoiced) | No | Yes |
-| Active Stripe subscription | Yes | Yes (change plan only) | Yes |
-| At least one `Payment` with status `SUCCEEDED` (Stripe, crypto, PayPal or Apple), no active plan | Yes | No | Yes |
-| Unlimited team member (`team.isUnlimited`) | No (as today) | No | Yes |
-| Anyone else, including every new registrant | No | No | No |
+| Enterprise member or owner (`isEnterpriseViewer`) | No (invoiced) | No | Skipped |
+| Active Stripe subscription | Yes | Yes (change plan only) | Skipped |
+| At least one `Payment` with `provider = APPLE` and status `SUCCEEDED` (iOS IAP buyer) | Yes | No | **Skipped: a paying individual, not an enterprise lead** |
+| At least one other `SUCCEEDED` `Payment` (Stripe, crypto or PayPal), no active plan | Yes | No | Skipped |
+| Unlimited team member (`team.isUnlimited`) | No (as today) | No | Skipped |
+| Anyone else, including every new web registrant | No | No | Enrolled once, one booking email |
 
-**Recommendation:** accounts with an existing paid relationship can still top up and manage what they
-already have; nobody else sees purchase UI, and every purchase API enforces the same rule server-side,
-so a hand-crafted request cannot buy a plan either.
+**Recommendation:** accounts with an existing paid relationship can still top up on the web and manage
+what they already have; nobody else sees web purchase UI, and every web purchase API enforces the same
+rule server-side. Buying in the iOS app is always available and is not affected by this table.
 
 ## Waitlist, email and password auth, booking email
 
@@ -446,7 +471,8 @@ so a hand-crafted request cannot buy a plan either.
 - **One email per user, ever.** The booking email goes out on the first successful sign-in of a
   non-customer and never again, however often they sign in, across concurrent sign-ins and retries.
 - **Customers are never enrolled.** Anyone whose `getPurchaseEligibility().reason` is not `"none"`
-  skips enrollment and lands on the dashboard as today.
+  skips enrollment and lands on the dashboard as today. That includes anyone who has bought through iOS
+  IAP: they are paying individuals and never receive the booking email.
 - **Verified emails only.** OAuth emails are provider-verified; credentials users can only sign in after
   email verification (`src/lib/auth.ts:84-88`). GitHub accounts without a public email
   (`profile.email` null) cannot be enrolled; the register page asks them to use another method.
@@ -544,7 +570,7 @@ enum WaitlistStatus { WAITING CONTACTED CONVERTED DECLINED }
 | Signup reveals existing accounts ("An account with this email already exists", `src/app/api/auth/signup/route.ts:75-78`) | Return the same "check your email" response in every case; email the account owner instead |
 | Password rule is only 8 characters minimum (`src/lib/password.ts:32-42`); bcrypt silently ignores bytes past 72 | Minimum 10, maximum 128 characters, reject over 72 bytes, optional breached-password check (HIBP k-anonymity) |
 | Signup provisions a LiteLLM user for every account (`signup/route.ts:135-149`, `auth.ts:186-203`) | Leave as is in Phase 2 (budget is 0, harmless). Revisit when conversion is designed. |
-| Beta gate (`NEXT_PUBLIC_BETA_ENABLED`) would block every new registrant if switched on | Retire it in Phase 2; the waitlist replaces it. Confirm the production value first. |
+| Beta gate (`NEXT_PUBLIC_BETA_ENABLED`) would block every new registrant if switched on | Keep the flag off (confirm the production value). Remove the web-only checks in `auth.ts` and `signup/route.ts`; leave the mobile Apple route untouched. |
 
 The register page is the existing sign-in page in a "register" mode (`/register`): OAuth buttons
 first, then email and password with name, using the existing `/api/auth/signup` endpoint.
@@ -554,8 +580,7 @@ first, then email and password with name, using the existing `/api/auth/signup` 
 - **Redirects** (in `next.config.ts`, all `permanent: true` so search engines move link equity):
   `/pricing` → `/`; `/compare` and `/compare/:slug` → `/`; `/learn` → `/`;
   `/learn/air-gapped-ai-ide` → `/enterprise#air-gapped`; `/learn/getting-started` → `/dashboard`;
-  other `/learn/:slug` → `/`; `/download` and `/download/:platform` → `/dashboard`;
-  `/jp/pricing` → `/jp`; `/jp/download` → `/dashboard`; `/signup` → `/register` (Phase 2);
+  other `/learn/:slug` → `/`; `/jp/pricing` → `/jp`; `/signup` → `/register` (Phase 2);
   `/beta/welcome` → `/dashboard` (Phase 2). Explicit `/jp/*` rules go before the generic untranslated-segment fallback.
 - **Root metadata** (`src/app/layout.tsx:43-93`): replace "Your Private Canadian AI" and "available for
   macOS, Windows, and Linux" with the enterprise title and description above; keywords move to
@@ -563,7 +588,7 @@ first, then email and password with name, using the existing `/api/auth/signup` 
 - **JSON-LD:** `Organization` description rewritten; `SoftwareApplication` keeps name, publisher and
   URL, becomes `applicationCategory: "BusinessApplication"`, and loses `offers` and `operatingSystem`.
   The homepage FAQ JSON-LD regenerates from the new FAQ.
-- **Sitemap and robots:** remove deleted URLs; add `/register` and `/welcome` to the disallow list.
+- **Sitemap and robots:** remove deleted URLs (`/download` stays); add `/register` and `/welcome` to the disallow list.
 - **llms.txt:** rewrite as an enterprise agent system with Platform, Deployment, Security, Use cases,
   Contact, Blog and the Japanese site. No Pricing, no Download.
 - **OG image:** regenerate light, with the Variant B headline.
@@ -586,12 +611,10 @@ first, then email and password with name, using the existing `/api/auth/signup` 
 | `src/messages/en.json`, `src/messages/jp.json` | 1 | Remove pricing, download and sign-up keys; JP interim labels |
 | `src/content/pricing-plans.ts` | 1 | Remove `PLANS`; keep tier constants |
 | `src/content/marketing-videos.ts` | 1 | Add the YouTube entry |
-| `src/app/api/stripe/checkout/route.ts`, `checkout-onetime/route.ts`, `src/app/api/paypal/create-order/route.ts`, `src/app/api/team/members/[memberId]/subscribe/route.ts` | 1 | Eligibility guard |
-| `src/app/api/releases/route.ts` | 1 | Require download entitlement |
-| `src/app/download/[platform]/route.ts` | 1 | Redirect to dashboard |
-| `src/app/dashboard/page.tsx`, `src/app/dashboard/layout.tsx`, `src/app/dashboard/billing/page.tsx`, `src/app/connect/remix/page.tsx` | 1 | Hide purchase and download UI by eligibility |
+| `src/app/api/stripe/checkout/route.ts`, `checkout-onetime/route.ts`, `src/app/api/paypal/create-order/route.ts`, `src/app/api/team/members/[memberId]/subscribe/route.ts` | 1 | Eligibility guard (web checkout only; no Apple route is touched) |
+| `src/app/dashboard/page.tsx`, `src/app/dashboard/layout.tsx`, `src/app/dashboard/billing/page.tsx`, `src/app/connect/remix/page.tsx` | 1 | Hide web purchase UI by eligibility (download card unchanged) |
 | `src/app/terms/page.tsx` | 1 | Replace `/pricing` references |
-| `src/lib/auth.ts` | 2 | `events.signIn` enrollment; remove beta gate |
+| `src/lib/auth.ts` | 2 | `events.signIn` enrollment; remove web beta-gate checks |
 | `src/lib/rate-limit.ts` | 2 | Shared store |
 | `src/app/api/auth/signup/route.ts`, `src/lib/password.ts` | 2 | Enumeration-safe response, password policy |
 | `src/app/signin/page.tsx`, `src/app/signup/page.tsx` | 2 | Register mode; `/signup` redirects |
@@ -603,7 +626,7 @@ first, then email and password with name, using the existing `/api/auth/signup` 
 
 | File | Phase | Purpose |
 |---|---|---|
-| `src/lib/purchase-eligibility.ts` | 1 | The single answer to "can this account buy or download?" |
+| `src/lib/purchase-eligibility.ts` | 1 | The single answer to "can this account start a web checkout?" |
 | `src/components/marketing/home/hero-enterprise.tsx` | 1 | Variant B hero |
 | `src/components/marketing/home/video-facade.tsx` | 1 | Click-to-load youtube-nocookie player |
 | `src/components/marketing/home/platform-pillars.tsx` | 1 | Three pillars and connector row |
@@ -628,7 +651,9 @@ first, then email and password with name, using the existing `/api/auth/signup` 
 **Unit (Vitest), written before the code:**
 
 - `purchase-eligibility`: every row of the eligibility table, plus refunded-only payments (not a paid
-  relationship), failed payments, enterprise beating a stray Stripe customer id, and a user with no team.
+  relationship), failed payments, enterprise beating a stray Stripe customer id, a user with no team,
+  and an Apple-only buyer resolving to `iap-customer`.
+- `enrollOnSignIn` skips an Apple-only buyer: no `WaitlistEntry`, no email.
 - Every purchase API returns 403 `PURCHASE_NOT_AVAILABLE` for a non-eligible session and is untouched
   for eligible ones; `?subscribe=` does nothing for a non-eligible user.
 - `enrollOnSignIn`: customers are never enrolled; two concurrent calls send exactly one email; a failed
@@ -645,9 +670,10 @@ first, then email and password with name, using the existing `/api/auth/signup` 
    `document.fonts.check('700 16px Inter')` is true.
 2. **375px:** no horizontal scroll (`scrollWidth == 375`) on every public page; hero CTA is full width
    and visible above the fold; full-page screenshots at several scroll positions; no console errors.
-3. **No download links reachable signed out:** crawl every link from the sitemap and nav on both
-   locales; assert no `href` contains `/download`, `releases.codewithfabric.com`, `.dmg`, `.exe`,
-   `.AppImage` or `.deb`; `GET /download` and `/download/mac-arm64` end on `/signin`; `GET /api/releases` returns 401.
+3. **No Download buttons on marketing pages:** on `/`, `/jp`, `/features`, `/use-cases`, `/enterprise`,
+   `/contact` (both locales), nav, mobile nav and footer contain no link to `/download`. `GET /download`
+   still returns 200 with its installer links unchanged, and the dashboard download card still renders
+   for a signed-in customer.
 4. **No purchase UI for a non-paying signed-in user:** previews cannot do OAuth, so this runs against
    production after merge with a seeded credentials test account that has no payments (and once more
    with an existing payer, which must still see top-ups). Assert `/dashboard/billing` shows no
@@ -659,6 +685,15 @@ first, then email and password with name, using the existing `/api/auth/signup` 
 6. **Video facade:** no request to youtube.com or youtube-nocookie.com before click; after click, one
    iframe from `youtube-nocookie.com/embed/slNxkQR3960`.
 7. **/jp Phase 1:** no 料金, ダウンロード, サインアップ or クレジットを購入 on any JP page; the CTA reads the interim label.
+8. **iOS IAP grant path still works (integration test, Vitest against a test database, runs in CI on
+   every PR):** with a fixture StoreKit 2 transaction signed by a test key and the verifier pointed at
+   the matching test root, `POST /api/apple/transaction` as a fresh user with **no prior payments**
+   (a brand-new iOS buyer) returns 200, writes one `Payment` (`provider = APPLE`, `SUCCEEDED`), raises the
+   balance by the SKU's credits, calls key provisioning and the LiteLLM sync; replaying the same
+   transaction grants nothing; a `REFUND` notification to `POST /api/apple/notifications` claws the
+   credits back. The same test asserts the web eligibility guard is never invoked on this path, and that
+   the buyer then resolves to `iap-customer`. A smoke check on production confirms both Apple routes
+   still answer (401 without a session, 400 for a malformed JWS) after each phase ships.
 
 **Final verification:** `npm test`, `npm run typecheck`, `npm run build`, then the Playwright suite;
 screenshots of the preview posted to the PR.
@@ -667,8 +702,8 @@ screenshots of the preview posted to the PR.
 
 | Phase | Ships | Depends on |
 |---|---|---|
-| **1. Copy, theme, removals (EN and JP removals)** | New EN homepage and Platform, Use cases, Deployment pages; light tokens; video facade; all redirects; download and pricing removal in both locales; purchase-eligibility guard on UI and APIs; JSON-LD, sitemap, robots, llms.txt, OG; terms wording. CTA points to `/signin`. | Ryan's answers to the CONFIRM items; legal-review pass on terms |
-| **2. Waitlist, auth hardening, booking email** | `/register`, `/welcome`, `WaitlistEntry` (after the DROP check), enrollment hook, booking and alert emails, retry cron, staff list, rate limits on a shared store, enumeration-safe signup, password policy, beta gate retired, `/signup` and `/beta/welcome` redirects | Phase 1 merged; sender address confirmed; Upstash or DB limiter chosen |
+| **1. Copy, theme, removals (EN and JP removals)** | New EN homepage and Platform, Use cases, Deployment pages; light tokens; video facade; all redirects; marketing Download buttons and pricing removed in both locales; web-checkout eligibility guard on UI and APIs (iOS IAP untouched; IAP integration test added); JSON-LD, sitemap, robots, llms.txt, OG; terms wording. CTA points to `/signin`. | Ryan's answers to the CONFIRM items; legal-review pass on terms |
+| **2. Waitlist, auth hardening, booking email** | `/register`, `/welcome`, `WaitlistEntry` (after the DROP check), enrollment hook, booking and alert emails, retry cron, staff list, rate limits on a shared store (Apple limiters keep their settings), enumeration-safe signup, password policy, web beta-gate checks removed, `/signup` and `/beta/welcome` redirects | Phase 1 merged; sender address confirmed; Upstash or DB limiter chosen |
 | **3. /jp rewrite** | JP versions of every new section, JP metadata, JP booking email, final JP CTA label; reviewed by kaoru@farpointhq.com | Phase 1 copy frozen |
 
 Each phase is one feature branch and one PR with a Vercel preview. Phase 1 is large enough to split
@@ -682,8 +717,8 @@ into two PRs if review prefers: (a) removals, redirects and the eligibility guar
 | Removing the credit ladder breaks an existing payer's renewal | Webhooks, portal and subscriptions are untouched; only new purchases are gated; eligibility covers active subscribers and past payers |
 | A non-customer reaches checkout through an old link or crafted request | Server-side 403 on every purchase API, not just hidden buttons |
 | Shared-DB drift drops the community app's tables | Mandatory `migrate diff` DROP check; only additive statements allowed |
-| Installers remain downloadable from the public bucket | Documented as residual; signed URLs are an open decision |
-| The desktop app links to `/download` or `/pricing` (update prompts, upgrade buttons) | Redirects land on sign-in then dashboard; audit the Fabric app for hardcoded URLs before Phase 1 ships |
+| The desktop or iOS app links to `/pricing` (upgrade buttons) | The redirect lands on the homepage; audit the apps for hardcoded web purchase URLs before Phase 1 ships. `/download` is unchanged. |
+| A web purchase change accidentally breaks iOS IAP | Apple routes and their dependencies are on the must-not-change list; the IAP integration test runs on every PR |
 | In-memory rate limits let a scripted signup flood the waitlist and Resend quota | Shared-store limiter in Phase 2 and the atomic one-email claim |
 | Losing organic traffic from coding SEO pages | Permanent redirects keep equity on the homepage; the coding audience is no longer the target |
 | JP visitors see English-positioned content in a Japanese shell between Phase 1 and 3 | Phase 1 only removes JP surfaces and swaps the CTA; JP positioning copy stays until the reviewed rewrite |
@@ -706,9 +741,9 @@ into two PRs if review prefers: (a) removals, redirects and the eligibility guar
 3. **Liskov Substitution.** OAuth and credentials sign-ins must behave identically for enrollment.
    Revised: the hook sits in `events.signIn`, which both providers reach, instead of the OAuth-only
    `callbacks.signIn` branch (`auth.ts:179`).
-4. **Interface Segregation.** Callers need different answers (top up, subscribe, download). Revised: the
-   eligibility result exposes three booleans and a reason instead of a single "isCustomer" flag that each
-   caller would reinterpret.
+4. **Interface Segregation.** Callers need different answers (top up, subscribe, skip the waitlist).
+   Revised: the eligibility result exposes two booleans and a reason instead of a single "isCustomer"
+   flag that each caller would reinterpret, and the Apple routes do not depend on it at all.
 5. **Dependency Inversion.** `enrollOnSignIn` depends on a small `sendInvite(entry)` function and a
    Prisma-shaped repository, injected in tests, rather than importing the Resend client directly; the
    real implementation uses `getResendClient()`.
@@ -727,20 +762,17 @@ shared theme system now.
    FAQ (or drop the question); the "50%" inside the BPO quote; the fintech stat card's four numbers;
    whether the Big 4 senior security engineer and the Big 4 partner are two different people (one card
    per real source); keep Discord in the footer or not.
-3. **Top-ups for existing payers.** Recommended: anyone with at least one succeeded payment can still
+3. **Web top-ups for existing payers.** Recommended: anyone with at least one succeeded payment can still
    top up; only active subscribers can change plan; nobody else can buy. Approve or narrow (for example,
    active subscribers only).
-4. **iOS in-app purchases.** The iOS app sells credit packs through Apple (`/api/apple/transaction`).
-   Keep selling to existing payers only (same eligibility check), or remove the products from App Store Connect.
-5. **Public installer bucket.** Accept the residual exposure for now, or schedule private objects with
-   signed URLs (this also needs a desktop auto-updater change).
-6. **Booking email sender.** `Ryan Monsurate <ryan@codewithfabric.com>` with Reply-To
+4. **Booking email sender.** `Ryan Monsurate <ryan@codewithfabric.com>` with Reply-To
    `ryan@farpointhq.com`, or the existing `noreply@codewithfabric.com`.
-7. **Booking page name.** Rename the Google appointment schedule from "Booking" to "Fabric savings review".
-8. **Existing non-paying accounts.** On their next sign-in they join the waitlist and get the booking
-   email once. Approve, or exclude accounts created before launch.
-9. **Changelog and blog.** Keep `/changelog` for customers but noindex it and drop it from nav; unpublish
+5. **Booking page name.** Rename the Google appointment schedule from "Booking" to "Fabric savings review".
+6. **Existing non-paying accounts.** On their next web sign-in they join the waitlist and get the booking
+   email once (IAP buyers and other payers are always skipped). Approve, or exclude accounts created
+   before launch. This includes iOS accounts that never bought anything.
+7. **Changelog and blog.** Keep `/changelog` for customers but noindex it and drop it from nav; unpublish
    blog posts that sell individual plans, downloads or personal AI.
-10. **Video title.** The YouTube title reads "Fabric for engineering teams". Keep it, or re-title it on
+8. **Video title.** The YouTube title reads "Fabric for engineering teams". Keep it, or re-title it on
     YouTube to match the white-collar positioning.
-11. **JP interim CTA label.** "ウェイトリストに登録" **[JP REVIEW]** until kaoru@farpointhq.com signs off.
+9. **JP interim CTA label.** "ウェイトリストに登録" **[JP REVIEW]** until kaoru@farpointhq.com signs off.

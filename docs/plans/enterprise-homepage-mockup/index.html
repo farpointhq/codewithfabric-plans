@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fabric Homepage Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-subtle: #f6f7f9;
+    --bg-tint: #eef3ff;
+    --surface: #ffffff;
+    --border: #e4e6eb;
+    --border-strong: #cfd3db;
+    --text: #0b0f19;
+    --text-muted: #4b5563;
+    --text-faint: #6b7280;
+    --accent: #1f4fd8;
+    --accent-hover: #1a43b8;
+    --accent-ink: #ffffff;
+    --accent-soft: #dbe5ff;
+    --success: #047857;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --shadow: 0 1px 2px rgba(11,15,25,.04), 0 8px 24px rgba(11,15,25,.06);
+    --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+  .note { font-size: 11px; font-weight: 600; letter-spacing: .02em; color: #92400e; background: #fef3c7; border: 1px solid #fde68a; border-radius: 6px; padding: 1px 6px; white-space: nowrap; }
+
+  /* Nav */
+  header { position: sticky; top: 0; z-index: 10; background: rgba(255,255,255,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 68px; }
+  .nav-links { display: flex; gap: 28px; font-size: 15px; color: var(--text-muted); font-weight: 500; }
+  .nav-right { display: flex; align-items: center; gap: 18px; font-size: 15px; font-weight: 500; }
+  .nav-right .signin { color: var(--text-muted); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 20px; border-radius: 999px; font-weight: 600; font-size: 15px; border: 1px solid transparent; }
+  .btn-primary { background: var(--accent); color: var(--accent-ink); }
+  .btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border-strong); }
+  .btn-lg { height: 52px; padding: 0 26px; font-size: 16px; }
+  .burger { display: none; width: 40px; height: 40px; border: 1px solid var(--border); border-radius: 10px; align-items: center; justify-content: center; }
+  .burger span { display: block; width: 18px; height: 2px; background: var(--text); box-shadow: 0 6px 0 var(--text), 0 -6px 0 var(--text); }
+
+  /* Hero */
+  .hero { padding: 80px 0 40px; background: radial-gradient(1200px 400px at 50% -10%, var(--bg-tint), transparent 70%); }
+  .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 6px 12px; }
+  .hero-inner { max-width: 880px; margin: 0 auto; text-align: center; }
+  h1 { font-size: 60px; line-height: 1.05; letter-spacing: -0.03em; font-weight: 700; margin: 22px 0 20px; }
+  .lede { font-size: 20px; line-height: 1.55; color: var(--text-muted); max-width: 720px; margin: 0 auto; }
+  .lede strong { color: var(--text); font-weight: 600; }
+  .cta-row { display: flex; gap: 12px; justify-content: center; margin-top: 32px; flex-wrap: wrap; }
+  .fine { font-size: 13px; color: var(--text-faint); margin-top: 14px; }
+
+  /* Video facade */
+  .video { margin: 48px auto 0; max-width: 960px; position: relative; aspect-ratio: 16/9; border-radius: 18px; overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); background: #0b0f19 url("thumb.jpg") center/cover no-repeat; }
+  .vcap { text-align: center; font-size: 14px; color: var(--text-faint); margin: 14px 0 0; }
+  .play { position: absolute; z-index: 2; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 84px; height: 84px; border-radius: 50%; background: rgba(255,255,255,.95); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
+  .play::before { content: ""; border-left: 24px solid var(--accent); border-top: 15px solid transparent; border-bottom: 15px solid transparent; margin-left: 6px; }
+  .video-cap { position: absolute; z-index: 2; left: 24px; bottom: 20px; color: #fff; font-weight: 600; font-size: 16px; }
+  .video-cap small { display: block; font-weight: 400; opacity: .85; font-size: 13px; margin-top: 2px; }
+
+  /* Proof strip */
+  .strip { margin-top: 56px; display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .strip > div { padding: 22px 24px; }
+  .strip > div + div { border-left: 1px solid var(--border); }
+  .strip b { display: block; font-size: 22px; letter-spacing: -0.01em; }
+  .strip span { color: var(--text-muted); font-size: 14px; }
+
+  section { padding: 88px 0; }
+  .alt { background: var(--bg-subtle); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .kicker { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+  h2 { font-size: 40px; line-height: 1.12; letter-spacing: -0.025em; margin: 12px 0 14px; font-weight: 700; }
+  .sub { font-size: 18px; line-height: 1.6; color: var(--text-muted); max-width: 720px; margin: 0; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 44px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 40px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; box-shadow: 0 1px 2px rgba(11,15,25,.03); }
+  .card h3 { font-size: 20px; letter-spacing: -0.01em; margin: 16px 0 10px; line-height: 1.3; }
+  .card p { color: var(--text-muted); font-size: 15.5px; line-height: 1.6; margin: 0; }
+  .icon { width: 44px; height: 44px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 700; }
+  .card ul { margin: 16px 0 0; padding: 0; list-style: none; font-size: 14.5px; color: var(--text); }
+  .card li { padding: 6px 0 6px 22px; position: relative; }
+  .card li::before { content: ""; position: absolute; left: 2px; top: 13px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+  .chip { border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 8px 14px; font-size: 14px; font-weight: 500; color: var(--text); }
+
+  .deploy .card { padding: 24px; }
+  .deploy h3 { font-size: 18px; margin-top: 0; }
+  .tag { display: inline-block; font-size: 12px; font-weight: 600; color: var(--success); background: #d1fae5; border-radius: 999px; padding: 3px 9px; margin-bottom: 12px; }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; }
+  .checks { display: grid; gap: 14px; margin-top: 8px; }
+  .check { display: flex; gap: 14px; align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px 18px; }
+  .check i { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); position: relative; margin-top: 1px; }
+  .check i::after { content: ""; position: absolute; left: 7px; top: 4px; width: 5px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  .check b { display: block; font-size: 15.5px; }
+  .check span { color: var(--text-muted); font-size: 14.5px; line-height: 1.5; }
+
+  .uses { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 40px; }
+  .use { border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; background: var(--surface); }
+  .use b { font-size: 16px; }
+  .use p { color: var(--text-muted); font-size: 14.5px; line-height: 1.55; margin: 8px 0 0; }
+
+  .quotes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 40px; }
+  .quote { border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; background: var(--surface); display: flex; flex-direction: column; justify-content: space-between; gap: 20px; }
+  .quote p { font-size: 15.5px; line-height: 1.6; margin: 0; }
+  .quote cite { font-style: normal; font-size: 13.5px; color: var(--text-muted); font-weight: 500; }
+
+  .final { text-align: center; background: var(--text); color: #fff; border-radius: 24px; padding: 64px 32px; }
+  .final h2 { color: #fff; }
+  .final .sub { color: #c7cbd4; margin: 0 auto; }
+  .final .btn-primary { background: #fff; color: var(--text); }
+
+  footer { border-top: 1px solid var(--border); padding: 40px 0 56px; color: var(--text-muted); font-size: 14px; }
+  .foot { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  .foot nav { display: flex; gap: 22px; flex-wrap: wrap; }
+
+  @media (max-width: 960px) {
+    .grid3, .uses { grid-template-columns: 1fr 1fr; }
+    .grid4, .quotes { grid-template-columns: 1fr 1fr; }
+    .two { grid-template-columns: 1fr; gap: 32px; }
+  }
+  @media (max-width: 640px) {
+    .wrap { padding: 0 16px; }
+    .nav-links, .nav-right .signin, .nav-right .btn { display: none; }
+    .burger { display: inline-flex; }
+    .hero { padding: 48px 0 24px; }
+    h1 { font-size: 38px; }
+    .lede { font-size: 17px; }
+    .cta-row .btn { width: 100%; }
+    .video { margin-top: 32px; border-radius: 14px; }
+    .play { width: 64px; height: 64px; }
+    .strip { grid-template-columns: 1fr; }
+    .strip > div + div { border-left: 0; border-top: 1px solid var(--border); }
+    section { padding: 56px 0; }
+    h2 { font-size: 30px; }
+    .grid3, .grid4, .uses, .quotes { grid-template-columns: 1fr; }
+    .final { padding: 44px 20px; border-radius: 18px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap nav">
+    <a href="#"><img src="logo-dark.svg" alt="Fabric" width="110" height="50"></a>
+    <nav class="nav-links">
+      <a href="#platform">Platform</a>
+      <a href="#deploy">Deployment</a>
+      <a href="#security">Security</a>
+      <a href="#uses">Use cases</a>
+      <a href="#">Contact</a>
+    </nav>
+    <div class="nav-right">
+      <a class="signin" href="#">Sign in</a>
+      <a class="btn btn-primary" href="#register">Register</a>
+      <span class="burger" aria-label="Menu"><span></span></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="wrap">
+      <div class="hero-inner">
+        <span class="eyebrow">For organizations already paying for enterprise AI</span>
+        <h1>Already paying for enterprise AI? Find out how to pay half.</h1>
+        <p class="lede">In most cases, Fabric cuts an existing enterprise agent bill by <strong>50% or more</strong>. It routes every task to the most cost-effective model that passes deterministic quality checks, delivering <strong>99.2% accuracy at 80%+ cost reduction</strong>.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary btn-lg" href="#register">Register to find out more</a>
+          <a class="btn btn-secondary btn-lg" href="#video">Watch the overview</a>
+        </div>
+        <p class="fine">Register with Google, Apple, GitHub or your work email. We follow up with a link to book a call.</p>
+      </div>
+
+      <div class="video" id="video" role="button" aria-label="Play video: Is your AI paying off?">
+        <span class="play"></span>
+      </div>
+      <p class="vcap">Is your AI paying off? A short overview of Fabric. Plays from youtube-nocookie.com only after you click.</p>
+
+      <div class="strip">
+        <div><b>99.2% accuracy</b><span>at 80%+ cost reduction, patent pending</span></div>
+        <div><b>Any model</b><span>Frontier, open-weight or your own, switch at any time</span></div>
+        <div><b>Any environment</b><span>Cloud, private cloud, on-premises or air-gapped</span></div>
+      </div>
+    </div>
+  </div>
+
+  <section id="platform">
+    <div class="wrap">
+      <div class="kicker">The platform</div>
+      <h2>One agent system for your whole organization</h2>
+      <p class="sub">Fabric gives every team an agent that works with the tools they already use, at a cost your finance team will notice.</p>
+      <div class="grid3">
+        <div class="card">
+          <div class="icon">1</div>
+          <h3>Connect every app your teams use</h3>
+          <p>Fabric works across email, documents, calendars, chat, CRM, ticketing, code repositories and data warehouses, so agents act on real context instead of copied text.</p>
+          <ul><li>Standard connectors through MCP</li><li>Permissions follow each user</li><li>Custom connectors for internal systems</li></ul>
+        </div>
+        <div class="card">
+          <div class="icon">2</div>
+          <h3>Pay less with routing and deterministic quality checks</h3>
+          <p>Each task goes to the most cost-effective model that can do it well. Deterministic checks verify every result, and anything that fails escalates to a stronger model or a person.</p>
+          <ul><li>99.2% accuracy at 80%+ cost reduction</li><li>Schema, policy and test checks on every output</li><li>Spend and quality reporting by team</li></ul>
+        </div>
+        <div class="card">
+          <div class="icon">3</div>
+          <h3>Voice onboarding that brings every team up to speed</h3>
+          <p>A built-in voice coach walks each person through their own real work, explains what the agent is doing and why, and adapts to their role. No prior experience with agents is needed.</p>
+          <ul><li>Guided sessions on real tasks</li><li>Role-specific training paths</li><li>Adoption reporting for leaders</li></ul>
+        </div>
+      </div>
+      <div class="chips">
+        <span class="chip">Google Workspace</span><span class="chip">Microsoft 365</span><span class="chip">Slack</span><span class="chip">Salesforce</span><span class="chip">Jira</span><span class="chip">ServiceNow</span><span class="chip">GitHub</span><span class="chip">Snowflake</span><span class="chip">Your internal APIs</span>
+        <span class="note">[CONFIRM: connectors available at launch]</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt deploy" id="deploy">
+    <div class="wrap">
+      <div class="kicker">Deployment</div>
+      <h2>Runs where your policies require. Deployed by our team.</h2>
+      <p class="sub">Choose the environment and the models. Our engineers install, configure and support every deployment.</p>
+      <div class="grid4">
+        <div class="card"><span class="tag">Fastest start</span><h3>Fabric Cloud</h3><p>Fully managed by Farpoint. Hosted inference runs only on zero-data-retention providers.</p></div>
+        <div class="card"><span class="tag">Your account</span><h3>Private cloud</h3><p>We deploy Fabric inside your own cloud tenancy, so data stays under your contracts and controls.</p></div>
+        <div class="card"><span class="tag">Your hardware</span><h3>On-premises</h3><p>We install Fabric and your chosen models on servers in your data centre.</p></div>
+        <div class="card"><span class="tag">No external network</span><h3>Air-gapped</h3><p>A fully disconnected deployment for defence, government and other classified environments.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="security">
+    <div class="wrap two">
+      <div>
+        <div class="kicker">Security and sovereignty</div>
+        <h2>An agent that works for your organization</h2>
+        <p class="sub">Many AI agents serve the vendor that built them. Fabric is built to answer to you: your data, your models, your rules, and a full record of what the agent did.</p>
+        <div class="chips"><span class="chip">Any model</span><span class="chip">No vendor lock-in</span><span class="chip">Canadian company</span></div>
+      </div>
+      <div class="checks">
+        <div class="check"><i></i><div><b>Your data never trains a model</b><span>Hosted inference runs only on providers under zero-data-retention agreements.</span></div></div>
+        <div class="check"><i></i><div><b>A complete audit trail</b><span>Every agent action is logged with an explanation, ready for compliance review.</span></div></div>
+        <div class="check"><i></i><div><b>Admin controls and access policies</b><span>Decide which teams use which models, tools and data sources.</span></div></div>
+        <div class="check"><i></i><div><b>Data residency options</b><span>Dedicated capacity in Canada and Japan can be provisioned on request.</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt" id="uses">
+    <div class="wrap">
+      <div class="kicker">Use cases</div>
+      <h2>Built for the work your teams do every day</h2>
+      <div class="uses">
+        <div class="use"><b>Finance</b><p>Reconcile accounts, draft variance commentary and prepare month-end packages from your systems of record.</p></div>
+        <div class="use"><b>Legal and compliance</b><p>Review contracts against your playbook, extract key terms and flag deviations for counsel.</p></div>
+        <div class="use"><b>Operations</b><p>Triage requests, follow standard operating procedures and keep every system updated.</p></div>
+        <div class="use"><b>Sales and customer success</b><p>Research accounts, draft proposals and RFP responses, and prepare for every meeting.</p></div>
+        <div class="use"><b>People and HR</b><p>Answer policy questions, coordinate onboarding and keep records consistent.</p></div>
+        <div class="use"><b>IT and engineering</b><p>Modernize legacy systems, review changes and document what your software does.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="kicker">Customers</div>
+      <h2>Trusted globally</h2>
+      <div class="quotes">
+        <div class="quote"><p>"The accomplishments I have achieved in the last six months would have taken years before."</p><cite>Senior security engineer, Big 4 firm</cite></div>
+        <div class="quote"><p>"We pulled back to less than 50% of code being generated by AI because of errors. Fabric is helping us bring that percentage back up." <span class="note">[CONFIRM]</span></p><cite>Engineering leader, global BPO company</cite></div>
+        <div class="quote"><p>"We can't use GitHub Copilot with client or sensitive data, so I brought Fabric to our data team as the solution."</p><cite>Partner, Big 4 consulting firm</cite></div>
+        <div class="quote"><p>"An incredible opportunity to work with your software. You and your team did incredible work."</p><cite>CEO, technology company</cite></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="register" style="padding-top: 0">
+    <div class="wrap">
+      <div class="final">
+        <h2>See what your organization could save</h2>
+        <p class="sub">Register with your work email. We will send you a link to book a 30-minute call with Ryan Monsurate, co-founder of Farpoint, to review your current AI spend and estimate your savings.</p>
+        <div class="cta-row"><a class="btn btn-primary btn-lg" href="#">Register to find out more</a></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <div>© Farpoint Technologies Inc.</div>
+    <nav><a href="#platform">Platform</a><a href="#deploy">Deployment</a><a href="#security">Security</a><a href="#uses">Use cases</a><a href="#">Contact</a><a href="#">Blog</a><a href="#">Privacy</a><a href="#">Terms</a><a href="#">日本語</a></nav>
+  </div>
+</footer>
+</body>
+</html>

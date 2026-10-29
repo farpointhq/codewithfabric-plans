@@ -1,0 +1,35 @@
+flowchart LR
+    subgraph BEFORE["Before (today)"]
+        direction TB
+        b1["/ Your machine. Your data. Your AI."]
+        b2["/pricing  credit ladder, BYOK, lifetime"]
+        b3["/download + /download/:platform"]
+        b4["/compare + cursor, copilot, windsurf"]
+        b5["/learn + 5 coding guides"]
+        b6["/features  coding with AI"]
+        b7["/use-cases"]
+        b8["/enterprise  Your Code. Your Models."]
+        b9["/jp  home with pricing + download"]
+        b10["/signup  self-serve account"]
+    end
+    subgraph AFTER["After (Phase 1 + 2)"]
+        direction TB
+        a1["/ Already paying for enterprise AI?"]
+        a6["/features  Platform: connect, route, onboard"]
+        a7["/use-cases  white-collar functions"]
+        a8["/enterprise  Deployment and security"]
+        a9["/jp  plans, pricing, download removed<br/>full rewrite in Phase 3"]
+        a10["/register  waitlist sign-in"]
+        a11["/welcome  booking link"]
+        a12["/dashboard  customers only:<br/>installers, billing, keys"]
+    end
+    b1 -->|rewrite| a1
+    b6 -->|rewrite| a6
+    b7 -->|rewrite| a7
+    b8 -->|rewrite| a8
+    b9 -->|strip now| a9
+    b10 -->|308| a10
+    b2 -->|308| a1
+    b4 -->|308| a1
+    b5 -->|"308 (air-gapped guide to /enterprise)"| a8
+    b3 -->|"308, sign-in required"| a12

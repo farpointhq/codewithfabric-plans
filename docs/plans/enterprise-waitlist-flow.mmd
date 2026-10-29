@@ -1,0 +1,22 @@
+flowchart TD
+    A["Visitor clicks<br/>Register to find out more"] --> B["/register<br/>(sign-in page, register mode)"]
+    B --> C{"Method"}
+    C -->|"Google / Apple / GitHub"| D["OAuth callback<br/>provider-verified email"]
+    C -->|"Email + password"| E["POST /api/auth/signup<br/>bcrypt, rate limited"]
+    E --> F["Verification email (Resend)"]
+    F --> G["/verify-email?token=..."]
+    G --> H["Credentials sign-in"]
+    D --> I["NextAuth events.signIn"]
+    H --> I
+    I --> J{"Existing paid<br/>relationship or<br/>enterprise member?"}
+    J -->|"Yes"| K["/dashboard<br/>unchanged customer experience"]
+    J -->|"No"| L["enrollOnSignIn()<br/>upsert WaitlistEntry by userId"]
+    L --> M{"Atomic claim:<br/>inviteEmailSentAt IS NULL?"}
+    M -->|"Already sent"| N["/welcome<br/>You are registered + booking button"]
+    M -->|"Claimed (first sign-in)"| O["after(): send invite email via Resend<br/>idempotency key waitlist-invite/userId"]
+    O -->|"Send OK"| P["Store Resend message id"]
+    O -->|"Send failed"| Q["Release claim so the next sign-in<br/>or the retry cron sends it"]
+    P --> N
+    Q --> N
+    O -.-> R["Internal alert to Ryan:<br/>new registrant"]
+    N --> S["Google Calendar booking page<br/>30 min with Ryan"]

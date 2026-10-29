@@ -61,6 +61,7 @@ markdown_extensions:
     permalink: true
 nav:
 - Home: index.md
+- "Enterprise Repositioning: codewithfabric.com": plans/enterprise-repositioning-plan.md
 - "Web Chat — Thin Client for codewithfabric.com": plans/web-chat-plan.md
 - "Reporting: Forge Coverage & Identity": plans/forge-namespaces-and-identity-plan.md
 - "Engineering Impact Index v3": plans/impact-score-v3-plan.md

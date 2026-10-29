@@ -4,6 +4,12 @@ Implementation plans for the [CodeWithFabric](https://github.com/farpointhq/code
 
 ## Active Plans
 
+- **[Enterprise Repositioning: codewithfabric.com](plans/enterprise-repositioning-plan.md)**: reposition
+  the site as an enterprise agent system for white-collar work, led by "already paying for enterprise
+  AI? find out how to pay half". Light theme, no public downloads or individual plans (EN and JP),
+  one "Register to find out more" CTA that signs people in, adds them to a waitlist and emails a
+  booking link. [Homepage mockup](plans/enterprise-homepage-mockup/index.html)
+
 - **[Web Chat — Thin Client for codewithfabric.com](plans/web-chat-plan.md)** — logged-in users
   land on chat, not the dashboard: a Tailwind rebuild of the Fabric desktop chat surface behind
   two transports (hosted chat with a client-side tool loop, and remote desktop over the existing
